@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
 import android.view.View
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -175,9 +176,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun uninstallApp(app: AppItem) {
         if (app.packageName.isBlank()) return
-        startActivity(Intent(Intent.ACTION_DELETE).apply {
-            data = Uri.parse("package:${app.packageName}")
-        })
+        try {
+            startActivity(Intent(Intent.ACTION_DELETE).apply {
+                data = Uri.parse("package:${app.packageName}")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+        } catch (e: Exception) {
+            Toast.makeText(this, "ไม่สามารถถอนการติดตั้งได้", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun registerDownloadReceiver() {

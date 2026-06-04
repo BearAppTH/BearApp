@@ -3,6 +3,7 @@ package app.bear.store.adapter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import app.bear.store.R
@@ -99,7 +100,10 @@ class AppCardAdapter(
                     when {
                         isInstalled && !hasUpdate -> {
                             btnDownload.visibility = View.GONE
+                            btnDownload.setOnClickListener(null)
                             btnUninstall.visibility = View.VISIBLE
+                            btnUninstall.isEnabled = true
+                            (btnUninstall.layoutParams as LinearLayout.LayoutParams).marginStart = 0
                             btnUninstall.setOnClickListener { onUninstall(app) }
                         }
                         hasUpdate -> {
@@ -108,6 +112,9 @@ class AppCardAdapter(
                             btnDownload.text = if (app.hasDownloadUrl) "อัปเดต" else "ยังไม่ระบุ"
                             btnDownload.setOnClickListener { onDownload(app) }
                             btnUninstall.visibility = View.VISIBLE
+                            btnUninstall.isEnabled = true
+                            (btnUninstall.layoutParams as LinearLayout.LayoutParams).marginStart =
+                                root.context.resources.getDimensionPixelSize(R.dimen.btn_gap)
                             btnUninstall.setOnClickListener { onUninstall(app) }
                         }
                         else -> {
@@ -116,6 +123,7 @@ class AppCardAdapter(
                             btnDownload.text = if (app.hasDownloadUrl) "ดาวน์โหลด" else "ยังไม่ระบุ"
                             btnDownload.setOnClickListener { onDownload(app) }
                             btnUninstall.visibility = View.GONE
+                            btnUninstall.setOnClickListener(null)
                         }
                     }
                 }
@@ -145,8 +153,16 @@ class AppCardAdapter(
                     btnDownload.setOnClickListener { onDownload(app) }
 
                     val isInstalled = cardState.installState != InstallState.NOT_INSTALLED
-                    btnUninstall.visibility = if (isInstalled) View.VISIBLE else View.GONE
-                    if (isInstalled) btnUninstall.setOnClickListener { onUninstall(app) }
+                    if (isInstalled) {
+                        btnUninstall.visibility = View.VISIBLE
+                        btnUninstall.isEnabled = true
+                        (btnUninstall.layoutParams as LinearLayout.LayoutParams).marginStart =
+                            root.context.resources.getDimensionPixelSize(R.dimen.btn_gap)
+                        btnUninstall.setOnClickListener { onUninstall(app) }
+                    } else {
+                        btnUninstall.visibility = View.GONE
+                        btnUninstall.setOnClickListener(null)
+                    }
                 }
             }
         }
