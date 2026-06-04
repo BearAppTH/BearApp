@@ -5,16 +5,20 @@ on:
     branches:
       - main
       - 'claude/**'
-    tags:
-      - 'v*'
   pull_request:
     branches: [ main ]
   workflow_dispatch:
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  # Build-only for non-main branches, PRs, and manual dispatch
   build:
     name: Build Release APK
     runs-on: ubuntu-latest
+    if: github.ref != 'refs/heads/main' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
 
     steps:
       - name: Checkout code
@@ -36,10 +40,21 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Decode keystore
+        run: |
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > /tmp/bearstore-release.jks
+            echo "KEYSTORE_FILE=/tmp/bearstore-release.jks" >> $GITHUB_ENV
+          fi
+
       - name: Build Release APK
         run: ./gradlew assembleRelease --stacktrace
         env:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+          KEYSTORE_FILE: ${{ env.KEYSTORE_FILE }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -48,15 +63,19 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           retention-days: 30
 
-  release:
-    name: Create GitHub Release
-    needs: build
+  # Auto version, build, tag, and release on every main push
+  auto-release:
+    name: Auto Version, Build & Release
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -74,30 +93,87 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Set version from run number
+        id: version
+        run: |
+          VERSION_NAME=$(grep -oP '(?<=versionName ")([^"]+)' app/build.gradle)
+          NEW_CODE=${{ github.run_number }}
+          TAG="v${VERSION_NAME}.${NEW_CODE}"
+          sed -i "s/versionCode [0-9]*/versionCode ${NEW_CODE}/" app/build.gradle
+          echo "TAG=${TAG}" >> $GITHUB_OUTPUT
+          echo "NEW_CODE=${NEW_CODE}" >> $GITHUB_OUTPUT
+          echo "Version: ${TAG}"
+
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > /tmp/bearstore-release.jks
+
       - name: Build Release APK
         run: ./gradlew assembleRelease --stacktrace
-
-      - name: Get version from tag
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+          KEYSTORE_FILE: /tmp/bearstore-release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Rename APK
         run: |
-          mv app/build/outputs/apk/release/app-release-unsigned.apk \
-             app/build/outputs/apk/release/bearapp-${{ steps.version.outputs.VERSION }}.apk || \
-          mv app/build/outputs/apk/release/app-release.apk \
-             app/build/outputs/apk/release/bearapp-${{ steps.version.outputs.VERSION }}.apk
+          APK_SRC=$(find app/build/outputs/apk/release/ -name "*.apk" | head -1)
+          mv "$APK_SRC" "app/build/outputs/apk/release/bearapp-${{ steps.version.outputs.TAG }}.apk"
 
-      - name: Create Release
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="${PREV_TAG}..HEAD"
+          else
+            RANGE="-20"
+          fi
+          COMMITS=$(git log --pretty=format:"- %s" $RANGE \
+            | grep -Ev "chore: bump versionCode|\[skip ci\]" \
+            || echo "- อัปเดตระบบภายใน")
+          if [ -z "$COMMITS" ]; then
+            COMMITS="- อัปเดตระบบภายใน"
+          fi
+          {
+            echo "NOTES<<CHANGELOG_EOF"
+            echo "$COMMITS"
+            echo "CHANGELOG_EOF"
+          } >> $GITHUB_OUTPUT
+
+      - name: Get APK info
+        id: apk_info
+        run: |
+          APK_FILE=$(find app/build/outputs/apk/release/ -name "bearapp-*.apk" | head -1)
+          APK_SIZE=$(du -h "$APK_FILE" | awk '{print $1}')
+          echo "APK_SIZE=${APK_SIZE}" >> $GITHUB_OUTPUT
+
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ steps.version.outputs.TAG }}" || true
+          git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" \
+            "${{ steps.version.outputs.TAG }}" || true
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.VERSION }}
-          name: "BearApp ${{ steps.version.outputs.VERSION }}"
+          tag_name: ${{ steps.version.outputs.TAG }}
+          name: "Bear Store ${{ steps.version.outputs.TAG }}"
           body: |
-            ## BearApp ${{ steps.version.outputs.VERSION }}
+            ## Bear Store ${{ steps.version.outputs.TAG }}
+
+            ### การเปลี่ยนแปลง
+            ${{ steps.changelog.outputs.NOTES }}
+
+            ---
 
             ### ดาวน์โหลด
             กดที่ไฟล์ `.apk` ด้านล่างเพื่อดาวน์โหลด
+            > ขนาดไฟล์: ${{ steps.apk_info.outputs.APK_SIZE }}
 
             ### วิธีติดตั้ง
             1. ดาวน์โหลดไฟล์ `.apk`

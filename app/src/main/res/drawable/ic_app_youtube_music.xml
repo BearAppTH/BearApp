@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Red circle background -->
+    <path
+        android:fillColor="#FF0000"
+        android:pathData="M24,4 C35.05,4 44,12.95 44,24 C44,35.05 35.05,44 24,44 C12.95,44 4,35.05 4,24 C4,12.95 12.95,4 24,4 Z" />
+    <!-- White outer ring -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M24,12 C30.63,12 36,17.37 36,24 C36,30.63 30.63,36 24,36 C17.37,36 12,30.63 12,24 C12,17.37 17.37,12 24,12 Z" />
+    <!-- Red inner ring -->
+    <path
+        android:fillColor="#FF0000"
+        android:pathData="M24,17 C27.87,17 31,20.13 31,24 C31,27.87 27.87,31 24,31 C20.13,31 17,27.87 17,24 C17,20.13 20.13,17 24,17 Z" />
+    <!-- White play triangle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M21,20 L29,24 L21,28 Z" />
+</vector>

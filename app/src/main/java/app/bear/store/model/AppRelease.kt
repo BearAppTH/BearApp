@@ -1,4 +1,4 @@
-package th.bearapp.installer.model
+package app.bear.store.model
 
 data class AppRelease(
     val tagName: String,
