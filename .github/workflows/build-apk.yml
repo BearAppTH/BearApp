@@ -9,6 +9,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # Build-only for non-main branches, PRs, and manual dispatch
   build:
@@ -59,11 +63,11 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           retention-days: 30
 
-  # Auto-increment version, build, tag, and release on every main push
+  # Auto version, build, tag, and release on every main push
   auto-release:
     name: Auto Version, Build & Release
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip ci]')
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: write
 
@@ -89,30 +93,20 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Auto-increment versionCode
+      - name: Set version from run number
         id: version
         run: |
           VERSION_NAME=$(grep -oP '(?<=versionName ")([^"]+)' app/build.gradle)
-          VERSION_CODE=$(grep -oP '(?<=versionCode )\d+' app/build.gradle)
-          NEW_CODE=$((VERSION_CODE + 1))
+          NEW_CODE=${{ github.run_number }}
           TAG="v${VERSION_NAME}.${NEW_CODE}"
-          sed -i "s/versionCode ${VERSION_CODE}/versionCode ${NEW_CODE}/" app/build.gradle
+          sed -i "s/versionCode [0-9]*/versionCode ${NEW_CODE}/" app/build.gradle
           echo "TAG=${TAG}" >> $GITHUB_OUTPUT
           echo "NEW_CODE=${NEW_CODE}" >> $GITHUB_OUTPUT
           echo "Version: ${TAG}"
 
-      - name: Commit version bump
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add app/build.gradle
-          git commit -m "chore: bump versionCode to ${{ steps.version.outputs.NEW_CODE }} [skip ci]"
-          git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" main
-
       - name: Decode keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > /tmp/bearstore-release.jks
-          echo "KEYSTORE_FILE=/tmp/bearstore-release.jks" >> $GITHUB_ENV
 
       - name: Build Release APK
         run: ./gradlew assembleRelease --stacktrace
@@ -158,16 +152,19 @@ jobs:
 
       - name: Create and push tag
         run: |
-          git tag "${{ steps.version.outputs.TAG }}"
-          git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" "${{ steps.version.outputs.TAG }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ steps.version.outputs.TAG }}" || true
+          git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" \
+            "${{ steps.version.outputs.TAG }}" || true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.TAG }}
-          name: "BearApp ${{ steps.version.outputs.TAG }}"
+          name: "Bear Store ${{ steps.version.outputs.TAG }}"
           body: |
-            ## BearApp ${{ steps.version.outputs.TAG }}
+            ## Bear Store ${{ steps.version.outputs.TAG }}
 
             ### การเปลี่ยนแปลง
             ${{ steps.changelog.outputs.NOTES }}
