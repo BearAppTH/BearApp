@@ -122,7 +122,9 @@ class MainActivity : AppCompatActivity() {
 
         adapter.onFilterEmpty = { isEmpty ->
             binding.tvSearchEmpty.visibility = if (isEmpty) View.VISIBLE else View.GONE
-            if (isEmpty) binding.rvApps.visibility = View.GONE
+            if (viewModel.isLoading.value != true && viewModel.errorMessage.value == null) {
+                binding.rvApps.visibility = if (isEmpty) View.GONE else View.VISIBLE
+            }
         }
     }
 
@@ -276,7 +278,11 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton(R.string.btn_close, null)
             .create()
 
-        viewModel.checkSelfUpdate()
+        // Don't re-check if a download is already in progress
+        when (viewModel.selfUpdateState.value) {
+            is SelfUpdateState.Downloading, is SelfUpdateState.ReadyToInstall -> Unit
+            else -> viewModel.checkSelfUpdate()
+        }
 
         val updateObserver = Observer<SelfUpdateState> { state ->
             if (!dialog.isShowing && state !is SelfUpdateState.Downloading) return@Observer

@@ -186,7 +186,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun checkSelfUpdate() {
-        _selfUpdateState.postValue(SelfUpdateState.Checking)
+        _selfUpdateState.value = SelfUpdateState.Checking
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val release = apiService.getLatestRelease(GITHUB_OWNER, GITHUB_REPO)
