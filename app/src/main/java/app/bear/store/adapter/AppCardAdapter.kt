@@ -1,14 +1,14 @@
-package th.bearapp.installer.adapter
+package app.bear.store.adapter
 
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
-import th.bearapp.installer.R
-import th.bearapp.installer.databinding.ItemAppCardBinding
-import th.bearapp.installer.model.AppItem
-import th.bearapp.installer.model.InstallState
+import app.bear.store.R
+import app.bear.store.databinding.ItemAppCardBinding
+import app.bear.store.model.AppItem
+import app.bear.store.model.InstallState
 
 enum class CardDownloadState { IDLE, DOWNLOADING, COMPLETE, ERROR }
 

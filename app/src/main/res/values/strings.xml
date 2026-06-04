@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">BearApp Installer</string>
-    <string name="app_display_name">BearApp</string>
+    <string name="app_name">Bear Store</string>
+    <string name="app_display_name">Bear Store</string>
 
     <string name="btn_download">ดาวน์โหลดแอป</string>
     <string name="btn_install">ติดตั้งทันที</string>

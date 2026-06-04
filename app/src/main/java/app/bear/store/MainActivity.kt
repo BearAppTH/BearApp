@@ -1,4 +1,4 @@
-package th.bearapp.installer
+package app.bear.store
 
 import android.app.DownloadManager
 import android.content.BroadcastReceiver
@@ -16,10 +16,10 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.LinearLayoutManager
-import th.bearapp.installer.adapter.AppCardAdapter
-import th.bearapp.installer.databinding.ActivityMainBinding
-import th.bearapp.installer.model.AppItem
-import th.bearapp.installer.viewmodel.MainViewModel
+import app.bear.store.adapter.AppCardAdapter
+import app.bear.store.databinding.ActivityMainBinding
+import app.bear.store.model.AppItem
+import app.bear.store.viewmodel.MainViewModel
 import java.io.File
 
 class MainActivity : AppCompatActivity() {

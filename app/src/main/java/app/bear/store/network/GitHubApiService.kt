@@ -1,11 +1,11 @@
-package th.bearapp.installer.network
+package app.bear.store.network
 
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import th.bearapp.installer.model.AppItem
-import th.bearapp.installer.model.AppsConfig
+import app.bear.store.model.AppItem
+import app.bear.store.model.AppsConfig
 import java.util.concurrent.TimeUnit
 
 class GitHubApiService {

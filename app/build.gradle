@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace 'th.bearapp.installer'
+    namespace 'app.bear.store'
     compileSdk 36
 
     defaultConfig {
-        applicationId "th.bearapp.installer"
+        applicationId "app.bear.store"
         minSdk 29
         targetSdk 36
         versionCode 4

@@ -1,4 +1,4 @@
-package th.bearapp.installer.model
+package app.bear.store.model
 
 enum class InstallState {
     NOT_INSTALLED,

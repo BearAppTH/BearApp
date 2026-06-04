@@ -1,4 +1,4 @@
-package th.bearapp.installer.viewmodel
+package app.bear.store.viewmodel
 
 import android.app.Application
 import android.app.DownloadManager
@@ -12,10 +12,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import th.bearapp.installer.adapter.CardDownloadState
-import th.bearapp.installer.model.AppItem
-import th.bearapp.installer.model.InstallState
-import th.bearapp.installer.network.GitHubApiService
+import app.bear.store.adapter.CardDownloadState
+import app.bear.store.model.AppItem
+import app.bear.store.model.InstallState
+import app.bear.store.network.GitHubApiService
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
