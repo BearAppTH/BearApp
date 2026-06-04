@@ -1,17 +1,84 @@
-# BearApp Installer
+<div align="center">
 
-แอป Android สำหรับดาวน์โหลดและติดตั้ง BearApp โดยดึงข้อมูลจาก GitHub Releases อัตโนมัติ
+# 🐻 Bear Store
 
-## ฟีเจอร์
+**App Store ส่วนตัวสำหรับแอป Bear**  
+ดาวน์โหลด · ติดตั้ง · อัปเดต ครบในที่เดียว
 
-- ตรวจสอบเวอร์ชันล่าสุดจาก GitHub Releases API
-- แสดง changelog และรายละเอียดการอัปเดต
-- ดาวน์โหลด APK พร้อม progress bar
-- ติดตั้งแอปหลังดาวน์โหลดเสร็จ
-- รองรับ Dark Mode
-- Design ธีมหมีน้ำตาล (Material Design 3)
+[![Download](https://img.shields.io/github/v/release/bearappth/bearapp?label=ดาวน์โหลด&logo=android&color=brown)](../../releases/latest)
+[![Android](https://img.shields.io/badge/Android-10%2B-green?logo=android)](../../releases/latest)
 
-## Requirements
+</div>
 
-- Android 10+ (API 29)
-- Internet connection
+---
+
+## ดาวน์โหลด Bear Store
+
+1. ไปที่ [**Releases → ดาวน์โหลด APK ล่าสุด**](../../releases/latest)
+2. เปิดไฟล์ `.apk` ที่ดาวน์โหลดมา
+3. อนุญาตการติดตั้งจากแหล่งที่ไม่รู้จัก → กด **ติดตั้ง**
+
+---
+
+## Bear Store ทำอะไรได้บ้าง?
+
+### 📥 ดาวน์โหลดและติดตั้งแอปในคลิกเดียว
+กดปุ่ม **ดาวน์โหลด** แล้วรอดู progress bar วิ่งใน app — เมื่อเสร็จ dialog ติดตั้งขึ้นมาให้อัตโนมัติ ไม่ต้องออกจาก Bear Store
+
+### 🔄 รู้ว่าแอปไหนมีอัปเดต
+Bear Store เทียบเวอร์ชันที่ติดตั้งบนเครื่องกับเวอร์ชันล่าสุดของเราให้อัตโนมัติ
+
+| สถานะ | ปุ่มที่เห็น |
+|-------|-----------|
+| ยังไม่ติดตั้ง | **ดาวน์โหลด** |
+| ติดตั้งแล้ว เวอร์ชันล่าสุด | **ถอนการติดตั้ง** |
+| มีเวอร์ชันใหม่ | **อัปเดต** + **ถอนการติดตั้ง** |
+
+### 🗑️ ถอนการติดตั้งได้เลย
+กดปุ่ม **ถอนการติดตั้ง** ในแต่ละแอปได้โดยตรง ไม่ต้องไปหาใน Settings
+
+---
+
+## แอปที่มีใน Bear Store
+
+| แอป | เวอร์ชันล่าสุด | รายละเอียด |
+|-----|--------------|-----------|
+| 🎬 **YouTube** | `21.21.80` | YouTube ปรับแต่งพิเศษ ไม่มีโฆษณา |
+| 🎵 **YouTube Music** | `9.21.51` | YouTube Music ปรับแต่งพิเศษ |
+| ⚙️ **Bear MicroG** | `3.5.3` | Google Services สำหรับแอป Bear |
+
+> แอปจะอัปเดตเวอร์ชันใหม่โดยทีม Bear — Bear Store จะแจ้งเตือนให้อัปเดตอัตโนมัติ
+
+---
+
+## วิธีติดตั้ง (ครั้งแรก)
+
+> **แนะนำ:** ติดตั้ง **Bear MicroG** ก่อน แล้วค่อยติดตั้ง YouTube และ YouTube Music
+
+```
+1. ติดตั้ง Bear Store
+2. เปิดแอป → กด "ดาวน์โหลด" ที่ Bear MicroG ก่อน
+3. รอติดตั้ง → กลับมา Bear Store
+4. ดาวน์โหลด YouTube และ YouTube Music
+```
+
+---
+
+## คำถามที่พบบ่อย
+
+**Q: ต้องอนุญาตอะไรบ้าง?**  
+A: Bear Store ขอ permission เพียงเท่าที่จำเป็น — อินเทอร์เน็ต, ติดตั้งแอป, และถอนการติดตั้งแอป
+
+**Q: ปลอดภัยไหม?**  
+A: Source code เปิดให้ตรวจสอบได้ทั้งหมดใน repository นี้ APK ทุกตัวถูก build และ sign โดย GitHub Actions อัตโนมัติ
+
+**Q: รองรับ Android เวอร์ชันไหน?**  
+A: Android 10 (API 29) ขึ้นไป
+
+---
+
+<div align="center">
+
+**[⬇️ ดาวน์โหลด Bear Store](../../releases/latest)**
+
+</div>

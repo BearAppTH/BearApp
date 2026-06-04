@@ -15,11 +15,14 @@
         app:elevation="0dp">
 
         <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:title="Bear Store"
+            app:logo="@drawable/ic_bear_logo_white"
+            app:title="@string/app_display_name"
             app:titleTextColor="@color/white"
-            app:titleTextAppearance="@style/TextAppearance.BearApp.Toolbar" />
+            app:titleTextAppearance="@style/TextAppearance.BearApp.Toolbar"
+            app:menu="@menu/menu_main" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <ScrollView
@@ -71,7 +74,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Bear Store"
+                            android:text="@string/app_display_name"
                             android:textColor="@color/white"
                             android:textSize="20sp"
                             android:textStyle="bold" />
@@ -79,7 +82,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="แอปสำหรับผู้ใช้หมี"
+                            android:text="@string/app_subtitle"
                             android:textColor="@color/white_70"
                             android:textSize="13sp"
                             android:layout_marginTop="2dp" />
@@ -89,7 +92,7 @@
                         android:id="@+id/btnRefresh"
                         android:layout_width="wrap_content"
                         android:layout_height="36dp"
-                        android:text="รีเฟรช"
+                        android:text="@string/action_refresh"
                         android:textSize="12sp"
                         app:backgroundTint="@color/white_20"
                         android:textColor="@color/white"
@@ -112,7 +115,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="แอปทั้งหมด"
+                    android:text="@string/section_all_apps"
                     android:textSize="16sp"
                     android:textStyle="bold"
                     android:textColor="@color/text_primary" />
@@ -188,7 +191,7 @@
                     android:id="@+id/btnRetry"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="ลองใหม่"
+                    android:text="@string/btn_retry"
                     app:backgroundTint="@color/primary"
                     app:cornerRadius="20dp" />
             </LinearLayout>

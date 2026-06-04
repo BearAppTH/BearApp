@@ -63,7 +63,8 @@ class AppCardAdapter(
 
         with(holder.binding) {
             tvAppName.text = app.name
-            tvUpdatedAt.text = if (app.updatedAt.isNotBlank()) "อัปเดต: ${app.updatedAt}" else ""
+            tvUpdatedAt.text = if (app.updatedAt.isNotBlank())
+                ctx.getString(R.string.updated_at_format, app.updatedAt) else ""
             tvUpdatedAt.visibility = if (app.updatedAt.isNotBlank()) View.VISIBLE else View.GONE
             ivAppIcon.setImageResource(iconResFor(app.id))
 
@@ -71,18 +72,27 @@ class AppCardAdapter(
             when (cardState.installState) {
                 InstallState.NOT_INSTALLED -> {
                     tvVersionNew.visibility = View.GONE
-                    tvVersionInstalled.text = if (app.version.isNotBlank()) "เวอร์ชัน ${app.version}" else "ยังไม่ระบุเวอร์ชัน"
+                    tvVersionInstalled.text = if (app.version.isNotBlank())
+                        ctx.getString(R.string.version_format, app.version)
+                    else
+                        ctx.getString(R.string.version_unspecified)
                     tvVersionInstalled.setTextColor(ContextCompat.getColor(ctx, R.color.text_secondary))
                 }
                 InstallState.INSTALLED_UP_TO_DATE -> {
                     tvVersionNew.visibility = View.GONE
-                    tvVersionInstalled.text = "✓ ติดตั้งอยู่: ${cardState.installedVersion ?: app.version}"
+                    tvVersionInstalled.text = ctx.getString(
+                        R.string.version_installed_check,
+                        cardState.installedVersion ?: app.version
+                    )
                     tvVersionInstalled.setTextColor(ContextCompat.getColor(ctx, R.color.success))
                 }
                 InstallState.UPDATE_AVAILABLE -> {
                     tvVersionNew.visibility = View.VISIBLE
-                    tvVersionNew.text = "ใหม่: ${app.version}"
-                    tvVersionInstalled.text = "ติดตั้งอยู่: ${cardState.installedVersion ?: ""}"
+                    tvVersionNew.text = ctx.getString(R.string.version_new, app.version)
+                    tvVersionInstalled.text = ctx.getString(
+                        R.string.version_installed,
+                        cardState.installedVersion ?: ""
+                    )
                     tvVersionInstalled.setTextColor(ContextCompat.getColor(ctx, R.color.text_secondary))
                 }
             }
@@ -109,7 +119,10 @@ class AppCardAdapter(
                         hasUpdate -> {
                             btnDownload.visibility = View.VISIBLE
                             btnDownload.isEnabled = app.hasDownloadUrl
-                            btnDownload.text = if (app.hasDownloadUrl) "อัปเดต" else "ยังไม่ระบุ"
+                            btnDownload.text = if (app.hasDownloadUrl)
+                                ctx.getString(R.string.btn_update)
+                            else
+                                ctx.getString(R.string.url_unavailable)
                             btnDownload.setOnClickListener { onDownload(app) }
                             btnUninstall.visibility = View.VISIBLE
                             btnUninstall.isEnabled = true
@@ -120,7 +133,10 @@ class AppCardAdapter(
                         else -> {
                             btnDownload.visibility = View.VISIBLE
                             btnDownload.isEnabled = app.hasDownloadUrl
-                            btnDownload.text = if (app.hasDownloadUrl) "ดาวน์โหลด" else "ยังไม่ระบุ"
+                            btnDownload.text = if (app.hasDownloadUrl)
+                                ctx.getString(R.string.btn_download)
+                            else
+                                ctx.getString(R.string.url_unavailable)
                             btnDownload.setOnClickListener { onDownload(app) }
                             btnUninstall.visibility = View.GONE
                             btnUninstall.setOnClickListener(null)
@@ -138,7 +154,10 @@ class AppCardAdapter(
                     progressLayout.visibility = View.GONE
                     btnInstall.visibility = View.VISIBLE
                     val isUpdate = cardState.installState != InstallState.NOT_INSTALLED
-                    btnInstall.text = if (isUpdate) "ติดตั้ง / อัปเดต" else "ติดตั้ง"
+                    btnInstall.text = if (isUpdate)
+                        ctx.getString(R.string.btn_install_update)
+                    else
+                        ctx.getString(R.string.btn_install)
                     btnInstall.setOnClickListener { onInstall(app) }
                     layoutActionRow.visibility = View.GONE
                 }
@@ -149,7 +168,7 @@ class AppCardAdapter(
 
                     btnDownload.visibility = View.VISIBLE
                     btnDownload.isEnabled = app.hasDownloadUrl
-                    btnDownload.text = "ลองใหม่"
+                    btnDownload.text = ctx.getString(R.string.btn_retry)
                     btnDownload.setOnClickListener { onDownload(app) }
 
                     val isInstalled = cardState.installState != InstallState.NOT_INSTALLED

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark mode Brown palette -->
+    <color name="primary">#8D6E63</color>
+    <color name="primary_dark">#6D4C41</color>
+    <color name="primary_light">#A89080</color>
+    <color name="primary_container">#3D2518</color>
+    <color name="primary_20">#338D6E63</color>
+    <color name="on_primary">#FFFFFF</color>
+
+    <color name="secondary">#D4956A</color>
+    <color name="accent">#FF9575</color>
+
+    <!-- Backgrounds -->
+    <color name="background">#1A110C</color>
+    <color name="surface">#2C1C14</color>
+
+    <!-- Text -->
+    <color name="text_primary">#F3E8E0</color>
+    <color name="text_secondary">#C4A07A</color>
+    <color name="text_hint">#8A6458</color>
+
+    <!-- Overlays (unchanged) -->
+    <color name="white">#FFFFFF</color>
+    <color name="white_20">#33FFFFFF</color>
+    <color name="white_40">#66FFFFFF</color>
+    <color name="white_70">#B3FFFFFF</color>
+
+    <!-- Dividers -->
+    <color name="divider">#3D2518</color>
+    <color name="shimmer_color">#3A2018</color>
+
+    <!-- Status (brighter for dark bg) -->
+    <color name="success">#81C784</color>
+    <color name="error">#EF9A9A</color>
+    <color name="warning">#FFD54F</color>
+</resources>
