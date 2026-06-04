@@ -83,14 +83,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _apps.postValue(config.apps)
                 checkAllInstallStates(config.apps)
             } catch (e: Exception) {
-                val cached = loadAppsCache()
-                if (cached != null) {
+                loadAppsCache()?.let { cached ->
                     _apps.postValue(cached)
                     checkAllInstallStates(cached)
                     _isUsingCache.postValue(true)
-                } else {
-                    _errorMessage.postValue(e.message ?: str(R.string.error_unknown))
-                }
+                } ?: _errorMessage.postValue(e.message ?: str(R.string.error_unknown))
             } finally {
                 _isLoading.postValue(false)
             }
