@@ -14,9 +14,11 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import app.bear.store.BuildConfig
 import app.bear.store.adapter.CardDownloadState
 import app.bear.store.model.AppItem
 import app.bear.store.model.InstallState
+import app.bear.store.model.SelfUpdateState
 import app.bear.store.network.GitHubApiService
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -41,6 +43,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // One-shot event: triggers auto-install when download completes
     private val _autoInstallTrigger = MutableSharedFlow<AppItem>(extraBufferCapacity = 10)
     val autoInstallTrigger = _autoInstallTrigger.asSharedFlow()
+
+    // Self-update: Bear Store updating itself
+    private val _selfUpdateState = MutableLiveData<SelfUpdateState>(SelfUpdateState.Checking)
+    val selfUpdateState: LiveData<SelfUpdateState> = _selfUpdateState
+
+    private val _selfUpdateInstallTrigger = MutableSharedFlow<File>(extraBufferCapacity = 1)
+    val selfUpdateInstallTrigger = _selfUpdateInstallTrigger.asSharedFlow()
 
     private val progressJobs = mutableMapOf<String, Job>()
     private val apiService = GitHubApiService()
@@ -149,6 +158,68 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun cancelDownload(appId: String) {
         progressJobs[appId]?.cancel()
         progressJobs.remove(appId)
+    }
+
+    fun checkSelfUpdate() {
+        _selfUpdateState.postValue(SelfUpdateState.Checking)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val release = apiService.getLatestRelease(GITHUB_OWNER, GITHUB_REPO)
+                val latestCode = release.tagName.split(".")
+                    .lastOrNull()?.filter { it.isDigit() }?.toIntOrNull() ?: 0
+                val currentCode = BuildConfig.VERSION_CODE
+                if (latestCode > currentCode && release.apkUrl != null) {
+                    _selfUpdateState.postValue(
+                        SelfUpdateState.UpdateAvailable(release.tagName, release.apkUrl)
+                    )
+                } else {
+                    _selfUpdateState.postValue(SelfUpdateState.UpToDate)
+                }
+            } catch (e: Exception) {
+                _selfUpdateState.postValue(SelfUpdateState.Error(e.message ?: "ตรวจสอบไม่ได้"))
+            }
+        }
+    }
+
+    fun startSelfUpdate(downloadUrl: String, destFile: File) {
+        _selfUpdateState.postValue(SelfUpdateState.Downloading(0))
+        viewModelScope.launch(Dispatchers.IO) {
+            val call = downloadClient.newCall(Request.Builder().url(downloadUrl).build())
+            try {
+                val response = call.execute()
+                if (!response.isSuccessful) throw Exception("HTTP ${response.code}")
+                val body = response.body ?: throw Exception("ไม่ได้รับข้อมูล")
+                val total = body.contentLength()
+                var downloaded = 0L
+                destFile.parentFile?.mkdirs()
+                destFile.outputStream().use { out ->
+                    body.byteStream().use { inp ->
+                        val buf = ByteArray(8 * 1024)
+                        var n = 0
+                        while (isActive && inp.read(buf).also { n = it } >= 0) {
+                            out.write(buf, 0, n)
+                            downloaded += n
+                            if (total > 0) {
+                                _selfUpdateState.postValue(
+                                    SelfUpdateState.Downloading(((downloaded * 100) / total).toInt())
+                                )
+                            }
+                        }
+                    }
+                }
+                if (isActive) {
+                    _selfUpdateState.postValue(SelfUpdateState.ReadyToInstall)
+                    _selfUpdateInstallTrigger.emit(destFile)
+                } else {
+                    destFile.delete()
+                    _selfUpdateState.postValue(SelfUpdateState.Error("ยกเลิกการดาวน์โหลด"))
+                }
+            } catch (e: Exception) {
+                call.cancel()
+                destFile.delete()
+                _selfUpdateState.postValue(SelfUpdateState.Error(e.message ?: "ดาวน์โหลดไม่ได้"))
+            }
+        }
     }
 
     fun getApp(appId: String): AppItem? = _apps.value?.find { it.id == appId }

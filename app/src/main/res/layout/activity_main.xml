@@ -15,11 +15,14 @@
         app:elevation="0dp">
 
         <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
+            app:logo="@drawable/ic_bear_logo"
             app:title="Bear Store"
             app:titleTextColor="@color/white"
-            app:titleTextAppearance="@style/TextAppearance.BearApp.Toolbar" />
+            app:titleTextAppearance="@style/TextAppearance.BearApp.Toolbar"
+            app:menu="@menu/menu_main" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <ScrollView

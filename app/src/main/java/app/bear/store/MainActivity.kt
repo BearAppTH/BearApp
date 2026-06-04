@@ -5,18 +5,23 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.LayoutInflater
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import app.bear.store.adapter.AppCardAdapter
 import app.bear.store.databinding.ActivityMainBinding
+import app.bear.store.databinding.DialogAboutBinding
 import app.bear.store.model.AppItem
+import app.bear.store.model.SelfUpdateState
 import app.bear.store.viewmodel.MainViewModel
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -48,6 +53,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        setupToolbar()
         setupRecyclerView()
         observeViewModel()
         setupListeners()
@@ -58,6 +64,15 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         viewModel.resetCompletedDownloads()
         viewModel.refreshInstallStates()
+    }
+
+    private fun setupToolbar() {
+        binding.toolbar.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.menu_about -> { showAboutDialog(); true }
+                else -> false
+            }
+        }
     }
 
     private fun setupRecyclerView() {
@@ -102,10 +117,17 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Auto-install immediately when download finishes
+        // Auto-install immediately when app download finishes
         lifecycleScope.launch {
             viewModel.autoInstallTrigger.collect { app ->
                 installApk(app)
+            }
+        }
+
+        // Auto-install Bear Store self-update when download finishes
+        lifecycleScope.launch {
+            viewModel.selfUpdateInstallTrigger.collect { file ->
+                installApkFromFile(file)
             }
         }
     }
@@ -114,6 +136,95 @@ class MainActivity : AppCompatActivity() {
         binding.btnRefresh.setOnClickListener { viewModel.fetchApps() }
         binding.btnRetry.setOnClickListener { viewModel.fetchApps() }
     }
+
+    // ─── About dialog ────────────────────────────────────────────────────────
+
+    private fun showAboutDialog() {
+        val dialogBinding = DialogAboutBinding.inflate(LayoutInflater.from(this))
+        dialogBinding.tvAboutVersion.text =
+            "เวอร์ชัน ${BuildConfig.VERSION_NAME}.${BuildConfig.VERSION_CODE}"
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setView(dialogBinding.root)
+            .setNegativeButton("ปิด", null)
+            .create()
+
+        viewModel.checkSelfUpdate()
+
+        viewModel.selfUpdateState.observe(this) { state ->
+            if (!dialog.isShowing && state !is SelfUpdateState.Downloading) return@observe
+            updateAboutDialogState(dialogBinding, state) { tagName, downloadUrl ->
+                dialog.dismiss()
+                startSelfUpdate(downloadUrl)
+            }
+        }
+
+        dialog.show()
+    }
+
+    private fun updateAboutDialogState(
+        b: DialogAboutBinding,
+        state: SelfUpdateState,
+        onUpdateClick: (tagName: String, downloadUrl: String) -> Unit
+    ) {
+        when (state) {
+            is SelfUpdateState.Checking -> {
+                b.tvUpdateStatus.text = "กำลังตรวจสอบอัปเดต..."
+                b.progressSelfUpdate.isIndeterminate = true
+                b.progressSelfUpdate.visibility = View.VISIBLE
+                b.tvDownloadProgress.visibility = View.GONE
+                b.btnSelfUpdate.visibility = View.GONE
+            }
+            is SelfUpdateState.UpToDate -> {
+                b.tvUpdateStatus.text = "✓ คุณใช้เวอร์ชันล่าสุดแล้ว"
+                b.progressSelfUpdate.visibility = View.GONE
+                b.tvDownloadProgress.visibility = View.GONE
+                b.btnSelfUpdate.visibility = View.GONE
+            }
+            is SelfUpdateState.UpdateAvailable -> {
+                b.tvUpdateStatus.text = "มีเวอร์ชันใหม่ ${state.tagName}"
+                b.progressSelfUpdate.visibility = View.GONE
+                b.tvDownloadProgress.visibility = View.GONE
+                b.btnSelfUpdate.visibility = View.VISIBLE
+                b.btnSelfUpdate.text = "อัปเดตเดี๋ยวนี้"
+                b.btnSelfUpdate.isEnabled = true
+                b.btnSelfUpdate.setOnClickListener {
+                    onUpdateClick(state.tagName, state.downloadUrl)
+                }
+            }
+            is SelfUpdateState.Downloading -> {
+                b.tvUpdateStatus.text = "กำลังดาวน์โหลดอัปเดต..."
+                b.progressSelfUpdate.isIndeterminate = false
+                b.progressSelfUpdate.progress = state.progress
+                b.progressSelfUpdate.visibility = View.VISIBLE
+                b.tvDownloadProgress.text = "${state.progress}%"
+                b.tvDownloadProgress.visibility = View.VISIBLE
+                b.btnSelfUpdate.visibility = View.VISIBLE
+                b.btnSelfUpdate.text = "กำลังดาวน์โหลด... ${state.progress}%"
+                b.btnSelfUpdate.isEnabled = false
+            }
+            is SelfUpdateState.ReadyToInstall -> {
+                b.tvUpdateStatus.text = "ดาวน์โหลดเสร็จ — กำลังเปิดการติดตั้ง..."
+                b.progressSelfUpdate.visibility = View.GONE
+                b.tvDownloadProgress.visibility = View.GONE
+                b.btnSelfUpdate.visibility = View.GONE
+            }
+            is SelfUpdateState.Error -> {
+                b.tvUpdateStatus.text = "ตรวจสอบไม่ได้: ${state.msg}"
+                b.progressSelfUpdate.visibility = View.GONE
+                b.tvDownloadProgress.visibility = View.GONE
+                b.btnSelfUpdate.visibility = View.GONE
+            }
+        }
+    }
+
+    private fun startSelfUpdate(downloadUrl: String) {
+        val destFile = File(getExternalFilesDir(null), "bear-store-update.apk")
+        viewModel.startSelfUpdate(downloadUrl, destFile)
+        Toast.makeText(this, "กำลังดาวน์โหลด Bear Store เวอร์ชันใหม่...", Toast.LENGTH_SHORT).show()
+    }
+
+    // ─── Download / Install / Uninstall ──────────────────────────────────────
 
     private fun checkPermissionAndDownload(app: AppItem) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
@@ -137,6 +248,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun installApk(app: AppItem) {
         val file = downloadedFiles[app.id] ?: return
+        installApkFromFile(file)
+    }
+
+    private fun installApkFromFile(file: File) {
         if (!file.exists()) return
         try {
             val uri = FileProvider.getUriForFile(this, "$packageName.provider", file)

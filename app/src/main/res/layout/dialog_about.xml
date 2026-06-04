@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:padding="24dp">
+
+    <!-- App icon -->
+    <ImageView
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:src="@drawable/ic_bear_logo"
+        android:contentDescription="" />
+
+    <!-- App name -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Bear Store"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_primary"
+        android:layout_marginTop="12dp" />
+
+    <!-- Current version -->
+    <TextView
+        android:id="@+id/tvAboutVersion"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="13sp"
+        android:textColor="@color/text_secondary"
+        android:layout_marginTop="4dp" />
+
+    <!-- Description -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="แอปสำหรับดาวน์โหลดและจัดการแอป Bear"
+        android:textSize="13sp"
+        android:textColor="@color/text_hint"
+        android:gravity="center"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="20dp" />
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/shimmer_color"
+        android:layout_marginBottom="20dp" />
+
+    <!-- Update section title -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="อัปเดตแอป"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_secondary"
+        android:layout_marginBottom="10dp" />
+
+    <!-- Update status text -->
+    <TextView
+        android:id="@+id/tvUpdateStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="กำลังตรวจสอบอัปเดต..."
+        android:textSize="13sp"
+        android:textColor="@color/text_secondary" />
+
+    <!-- Progress: checking / downloading -->
+    <com.google.android.material.progressindicator.LinearProgressIndicator
+        android:id="@+id/progressSelfUpdate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:indeterminate="true"
+        app:indicatorColor="@color/primary"
+        app:trackColor="@color/primary_20"
+        app:trackCornerRadius="4dp"
+        android:visibility="visible" />
+
+    <!-- Download progress percentage (shown while downloading) -->
+    <TextView
+        android:id="@+id/tvDownloadProgress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:textColor="@color/text_hint"
+        android:gravity="end"
+        android:layout_marginTop="4dp"
+        android:visibility="gone" />
+
+    <!-- Update button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnSelfUpdate"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:text="อัปเดตเดี๋ยวนี้"
+        android:layout_marginTop="14dp"
+        app:backgroundTint="@color/primary"
+        app:cornerRadius="22dp"
+        android:visibility="gone" />
+
+</LinearLayout>
