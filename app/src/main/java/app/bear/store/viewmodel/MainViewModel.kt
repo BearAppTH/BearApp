@@ -118,7 +118,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 destFile.outputStream().use { out ->
                     body.byteStream().use { inp ->
                         val buf = ByteArray(8 * 1024)
-                        var n: Int
+                        var n = 0
                         while (isActive && inp.read(buf).also { n = it } >= 0) {
                             out.write(buf, 0, n)
                             downloaded += n
