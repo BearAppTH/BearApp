@@ -21,11 +21,13 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import app.bear.store.adapter.AppCardAdapter
+import app.bear.store.adapter.ChipFilter
 import app.bear.store.databinding.ActivityMainBinding
 import app.bear.store.databinding.DialogAboutBinding
 import app.bear.store.databinding.DialogAppDetailBinding
 import app.bear.store.databinding.DialogSettingsBinding
 import app.bear.store.model.AppItem
+import app.bear.store.model.InstallState
 import app.bear.store.model.SelfUpdateState
 import app.bear.store.viewmodel.MainViewModel
 import coil.load
@@ -117,6 +119,11 @@ class MainActivity : AppCompatActivity() {
         )
         binding.rvApps.layoutManager = LinearLayoutManager(this)
         binding.rvApps.adapter = adapter
+
+        adapter.onFilterEmpty = { isEmpty ->
+            binding.tvSearchEmpty.visibility = if (isEmpty) View.VISIBLE else View.GONE
+            if (isEmpty) binding.rvApps.visibility = View.GONE
+        }
     }
 
     private fun observeViewModel() {
@@ -130,6 +137,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         viewModel.isLoading.observe(this) { loading ->
+            if (!loading) binding.swipeRefresh.isRefreshing = false
             binding.shimmerLayout.visibility = if (loading) View.VISIBLE else View.GONE
             if (!loading) {
                 binding.rvApps.visibility =
@@ -150,14 +158,21 @@ class MainActivity : AppCompatActivity() {
         }
 
         viewModel.downloadStates.observe(this) { states ->
-            states.forEach { (appId, pair) ->
-                adapter.updateState(appId, pair.first, pair.second)
+            states.forEach { (appId, info) ->
+                adapter.updateState(appId, info.state, info.progress, info.error)
             }
         }
 
         viewModel.installStates.observe(this) { states ->
             states.forEach { (appId, pair) ->
                 adapter.updateInstallState(appId, pair.first, pair.second)
+            }
+            val updateCount = states.values.count { it.first == InstallState.UPDATE_AVAILABLE }
+            if (updateCount >= 2) {
+                binding.btnUpdateAll.text = getString(R.string.btn_update_all, updateCount)
+                binding.btnUpdateAll.visibility = View.VISIBLE
+            } else {
+                binding.btnUpdateAll.visibility = View.GONE
             }
         }
 
@@ -173,8 +188,34 @@ class MainActivity : AppCompatActivity() {
     private fun setupListeners() {
         binding.btnRefresh.setOnClickListener { viewModel.fetchApps() }
         binding.btnRetry.setOnClickListener { viewModel.fetchApps() }
+
+        binding.swipeRefresh.setColorSchemeColors(ContextCompat.getColor(this, R.color.primary))
+        binding.swipeRefresh.setOnRefreshListener { viewModel.fetchApps() }
+
         binding.etSearch.addTextChangedListener { text ->
-            adapter.filter(text?.toString() ?: "")
+            val query = text?.toString() ?: ""
+            adapter.filter(query)
+            if (query.isBlank()) {
+                binding.tvSearchEmpty.visibility = View.GONE
+                binding.rvApps.visibility = if (viewModel.errorMessage.value == null) View.VISIBLE else View.GONE
+            }
+        }
+
+        binding.chipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
+            val filter = when {
+                R.id.chipUpdates in checkedIds -> ChipFilter.UPDATES
+                R.id.chipInstalled in checkedIds -> ChipFilter.INSTALLED
+                else -> ChipFilter.ALL
+            }
+            adapter.setChipFilter(filter)
+        }
+
+        binding.btnUpdateAll.setOnClickListener {
+            val apps = viewModel.apps.value ?: return@setOnClickListener
+            apps.filter { app ->
+                viewModel.installStates.value?.get(app.id)?.first == InstallState.UPDATE_AVAILABLE
+                        && app.hasDownloadUrl
+            }.forEach { app -> checkPermissionAndDownload(app) }
         }
     }
 
@@ -338,6 +379,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun beginDownload(app: AppItem) {
+        // Remove stale APK files from previous versions of this app
+        getExternalFilesDir(null)?.listFiles { file ->
+            file.name.startsWith("${app.id}-") && file.name.endsWith(".apk")
+        }?.forEach { it.delete() }
+
         val fileName = "${app.id}-${app.version.ifBlank { "latest" }}.apk"
         val destFile = File(getExternalFilesDir(null), fileName)
         downloadedFiles[app.id] = destFile

@@ -20,6 +20,7 @@ import okhttp3.Request
 import app.bear.store.BuildConfig
 import app.bear.store.R
 import app.bear.store.adapter.CardDownloadState
+import app.bear.store.adapter.DownloadInfo
 import app.bear.store.model.AppItem
 import app.bear.store.model.InstallState
 import app.bear.store.model.SelfUpdateState
@@ -41,8 +42,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _isUsingCache = MutableLiveData(false)
     val isUsingCache: LiveData<Boolean> = _isUsingCache
 
-    private val _downloadStates = MutableLiveData<Map<String, Pair<CardDownloadState, Int>>>(emptyMap())
-    val downloadStates: LiveData<Map<String, Pair<CardDownloadState, Int>>> = _downloadStates
+    private val _downloadStates = MutableLiveData<Map<String, DownloadInfo>>(emptyMap())
+    val downloadStates: LiveData<Map<String, DownloadInfo>> = _downloadStates
 
     private val _installStates = MutableLiveData<Map<String, Pair<InstallState, String?>>>(emptyMap())
     val installStates: LiveData<Map<String, Pair<InstallState, String?>>> = _installStates
@@ -173,7 +174,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: Exception) {
                 call.cancel()
                 destFile.delete()
-                updateDownloadState(app.id, CardDownloadState.ERROR, 0)
+                updateDownloadState(app.id, CardDownloadState.ERROR, 0, e.message)
             }
         }
     }
@@ -189,10 +190,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val release = apiService.getLatestRelease(GITHUB_OWNER, GITHUB_REPO)
-                val latestCode = release.tagName.split(".")
-                    .lastOrNull()?.filter { it.isDigit() }?.toIntOrNull() ?: 0
-                val currentCode = BuildConfig.VERSION_CODE
-                if (latestCode > currentCode && release.apkUrl != null) {
+                val latestVersion = release.tagName.trimStart('v', 'V')
+                if (isVersionNewer(latestVersion, BuildConfig.VERSION_NAME) && release.apkUrl != null) {
                     _selfUpdateState.postValue(
                         SelfUpdateState.UpdateAvailable(release.tagName, release.apkUrl)
                     )
@@ -224,6 +223,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val total = body.contentLength()
                 var downloaded = 0L
                 destFile.parentFile?.mkdirs()
+                if (total > 0) {
+                    val statsPath = destFile.parentFile?.path
+                        ?: getApplication<Application>().filesDir.path
+                    val stats = StatFs(statsPath)
+                    val available = stats.availableBlocksLong * stats.blockSizeLong
+                    if (available < total) throw Exception(str(R.string.error_insufficient_space))
+                }
                 destFile.outputStream().use { out ->
                     body.byteStream().use { inp ->
                         val buf = ByteArray(8 * 1024)
@@ -260,11 +266,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun resetCompletedDownloads() {
         val current = _downloadStates.value.orEmpty()
-        val hasCompleted = current.values.any { it.first == CardDownloadState.COMPLETE }
+        val hasCompleted = current.values.any { it.state == CardDownloadState.COMPLETE }
         if (!hasCompleted) return
         _downloadStates.postValue(
             current.mapValues { (_, v) ->
-                if (v.first == CardDownloadState.COMPLETE) Pair(CardDownloadState.IDLE, 0) else v
+                if (v.state == CardDownloadState.COMPLETE) DownloadInfo(CardDownloadState.IDLE) else v
             }
         )
     }
@@ -299,9 +305,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return false
     }
 
-    private fun updateDownloadState(appId: String, state: CardDownloadState, progress: Int) {
+    private fun updateDownloadState(appId: String, state: CardDownloadState, progress: Int, error: String? = null) {
         val current = _downloadStates.value.orEmpty().toMutableMap()
-        current[appId] = Pair(state, progress)
+        current[appId] = DownloadInfo(state, progress, error)
         _downloadStates.postValue(current)
     }
 

@@ -147,6 +147,17 @@
             android:layout_marginTop="12dp"
             android:visibility="gone" />
 
+        <!-- Download error message (ERROR state only) -->
+        <TextView
+            android:id="@+id/tvDownloadError"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:textColor="@color/error"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="-4dp"
+            android:visibility="gone" />
+
         <!-- Action row: download/update/retry + optional uninstall -->
         <LinearLayout
             android:id="@+id/layoutActionRow"

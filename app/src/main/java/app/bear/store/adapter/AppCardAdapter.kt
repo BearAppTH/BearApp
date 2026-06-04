@@ -19,13 +19,16 @@ import app.bear.store.model.InstallState
 import coil.load
 
 enum class CardDownloadState { IDLE, DOWNLOADING, COMPLETE, ERROR }
+data class DownloadInfo(val state: CardDownloadState, val progress: Int = 0, val error: String? = null)
+enum class ChipFilter { ALL, UPDATES, INSTALLED }
 
 data class AppCardState(
     val app: AppItem,
     val downloadState: CardDownloadState = CardDownloadState.IDLE,
     val progress: Int = 0,
     val installState: InstallState = InstallState.NOT_INSTALLED,
-    val installedVersion: String? = null
+    val installedVersion: String? = null,
+    val downloadError: String? = null
 )
 
 class AppCardAdapter(
@@ -39,6 +42,8 @@ class AppCardAdapter(
     private val allItems = mutableListOf<AppCardState>()
     private val items = mutableListOf<AppCardState>()
     private var currentQuery = ""
+    private var currentChip = ChipFilter.ALL
+    var onFilterEmpty: ((Boolean) -> Unit)? = null
 
     fun setApps(apps: List<AppItem>) {
         val newAll = apps.map { app ->
@@ -49,18 +54,22 @@ class AppCardAdapter(
         applyFilter()
     }
 
-    fun updateState(appId: String, state: CardDownloadState, progress: Int = 0) {
+    fun updateState(appId: String, state: CardDownloadState, progress: Int = 0, error: String? = null) {
         val allIdx = allItems.indexOfFirst { it.app.id == appId }
-        if (allIdx >= 0) allItems[allIdx] = allItems[allIdx].copy(downloadState = state, progress = progress)
+        if (allIdx >= 0) allItems[allIdx] = allItems[allIdx].copy(downloadState = state, progress = progress, downloadError = error)
         val idx = items.indexOfFirst { it.app.id == appId }
         if (idx < 0) return
-        items[idx] = items[idx].copy(downloadState = state, progress = progress)
+        items[idx] = items[idx].copy(downloadState = state, progress = progress, downloadError = error)
         notifyItemChanged(idx)
     }
 
     fun updateInstallState(appId: String, installState: InstallState, installedVersion: String?) {
         val allIdx = allItems.indexOfFirst { it.app.id == appId }
         if (allIdx >= 0) allItems[allIdx] = allItems[allIdx].copy(installState = installState, installedVersion = installedVersion)
+        if (currentChip != ChipFilter.ALL) {
+            applyFilter()
+            return
+        }
         val idx = items.indexOfFirst { it.app.id == appId }
         if (idx < 0) return
         items[idx] = items[idx].copy(installState = installState, installedVersion = installedVersion)
@@ -72,13 +81,27 @@ class AppCardAdapter(
         applyFilter()
     }
 
+    fun setChipFilter(filter: ChipFilter) {
+        currentChip = filter
+        applyFilter()
+    }
+
     private fun applyFilter() {
-        val filtered = if (currentQuery.isBlank()) allItems.toList()
-        else allItems.filter { it.app.name.contains(currentQuery, ignoreCase = true) }
+        var filtered = allItems.toList()
+        if (currentQuery.isNotBlank()) {
+            filtered = filtered.filter { it.app.name.contains(currentQuery, ignoreCase = true) }
+        }
+        filtered = when (currentChip) {
+            ChipFilter.ALL -> filtered
+            ChipFilter.UPDATES -> filtered.filter { it.installState == InstallState.UPDATE_AVAILABLE }
+            ChipFilter.INSTALLED -> filtered.filter { it.installState != InstallState.NOT_INSTALLED }
+        }
         val diffResult = DiffUtil.calculateDiff(DiffCallback(items.toList(), filtered))
         items.clear()
         items.addAll(filtered)
         diffResult.dispatchUpdatesTo(this)
+        val isFiltering = currentQuery.isNotBlank() || currentChip != ChipFilter.ALL
+        onFilterEmpty?.invoke(filtered.isEmpty() && isFiltering)
     }
 
     inner class ViewHolder(val binding: ItemAppCardBinding) : RecyclerView.ViewHolder(binding.root)
@@ -157,6 +180,7 @@ class AppCardAdapter(
             // Action buttons
             when (cardState.downloadState) {
                 CardDownloadState.IDLE -> {
+                    tvDownloadError.visibility = View.GONE
                     progressLayout.visibility = View.GONE
                     btnInstall.visibility = View.GONE
                     layoutActionRow.visibility = View.VISIBLE
@@ -201,6 +225,7 @@ class AppCardAdapter(
                     }
                 }
                 CardDownloadState.DOWNLOADING -> {
+                    tvDownloadError.visibility = View.GONE
                     progressLayout.visibility = View.VISIBLE
                     progressBar.progress = cardState.progress
                     tvProgress.text = "${cardState.progress}%"
@@ -209,6 +234,7 @@ class AppCardAdapter(
                     layoutActionRow.visibility = View.GONE
                 }
                 CardDownloadState.COMPLETE -> {
+                    tvDownloadError.visibility = View.GONE
                     progressLayout.visibility = View.GONE
                     btnInstall.visibility = View.VISIBLE
                     val isUpdate = cardState.installState != InstallState.NOT_INSTALLED
@@ -222,6 +248,8 @@ class AppCardAdapter(
                 CardDownloadState.ERROR -> {
                     progressLayout.visibility = View.GONE
                     btnInstall.visibility = View.GONE
+                    tvDownloadError.visibility = if (cardState.downloadError != null) View.VISIBLE else View.GONE
+                    tvDownloadError.text = cardState.downloadError ?: ""
                     layoutActionRow.visibility = View.VISIBLE
 
                     btnDownload.visibility = View.VISIBLE

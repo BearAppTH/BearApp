@@ -72,6 +72,15 @@
     <string name="label_whats_new">What\'s New</string>
     <string name="label_no_description">No additional information</string>
 
+    <!-- Filter chips -->
+    <string name="chip_all">All</string>
+    <string name="chip_updates">Updates</string>
+    <string name="chip_installed">Installed</string>
+
+    <!-- Search / list -->
+    <string name="search_no_results">No apps found</string>
+    <string name="btn_update_all">Update All (%d)</string>
+
     <!-- Notifications -->
     <string name="notif_channel_name">Bear Store</string>
     <string name="notif_channel_desc">Notifies when updates are available for installed apps</string>
