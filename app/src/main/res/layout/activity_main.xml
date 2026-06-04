@@ -9,7 +9,6 @@
 
     <!-- App Bar -->
     <com.google.android.material.appbar.AppBarLayout
-        android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/primary"
@@ -18,7 +17,7 @@
         <com.google.android.material.appbar.MaterialToolbar
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:title="@string/app_name"
+            app:title="Bear Store"
             app:titleTextColor="@color/white"
             app:titleTextAppearance="@style/TextAppearance.BearApp.Toolbar" />
     </com.google.android.material.appbar.AppBarLayout>
@@ -33,68 +32,101 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingHorizontal="20dp"
-            android:paddingTop="20dp"
-            android:paddingBottom="32dp">
+            android:paddingHorizontal="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="24dp">
 
-            <!-- Hero Card -->
+            <!-- Header compact -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                app:cardCornerRadius="24dp"
-                app:cardElevation="6dp"
+                android:layout_marginBottom="20dp"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="4dp"
                 app:cardBackgroundColor="@color/primary">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:orientation="vertical"
-                    android:paddingVertical="32dp"
-                    android:paddingHorizontal="24dp">
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="20dp"
+                    android:paddingVertical="16dp">
 
                     <ImageView
-                        android:layout_width="96dp"
-                        android:layout_height="96dp"
+                        android:layout_width="52dp"
+                        android:layout_height="52dp"
                         android:src="@drawable/ic_bear_logo"
-                        android:contentDescription="@string/app_name"
                         android:background="@drawable/bg_icon_circle"
-                        android:padding="12dp" />
+                        android:padding="8dp"
+                        android:contentDescription="" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:text="@string/app_display_name"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:layout_marginStart="14dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Bear Store"
+                            android:textColor="@color/white"
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="แอปสำหรับผู้ใช้หมี"
+                            android:textColor="@color/white_70"
+                            android:textSize="13sp"
+                            android:layout_marginTop="2dp" />
+                    </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRefresh"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:text="รีเฟรช"
+                        android:textSize="12sp"
+                        app:backgroundTint="@color/white_20"
                         android:textColor="@color/white"
-                        android:textSize="28sp"
-                        android:textStyle="bold"
-                        android:layout_marginTop="16dp"
-                        android:letterSpacing="0.02" />
-
-                    <TextView
-                        android:id="@+id/tvVersion"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textColor="@color/white_70"
-                        android:textSize="14sp"
-                        android:layout_marginTop="4dp"
-                        tools:text="เวอร์ชัน v1.0.0" />
-
-                    <com.google.android.material.chip.Chip
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="ล่าสุด"
-                        android:layout_marginTop="12dp"
-                        app:chipBackgroundColor="@color/white_20"
-                        android:textColor="@color/white"
-                        app:chipStrokeColor="@color/white_40"
-                        app:chipStrokeWidth="1dp" />
-
+                        app:cornerRadius="18dp"
+                        app:strokeColor="@color/white_40"
+                        app:strokeWidth="1dp"
+                        android:paddingHorizontal="12dp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Shimmer loading placeholder -->
+            <!-- Section title -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="แอปทั้งหมด"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary" />
+
+                <TextView
+                    android:id="@+id/tvAppCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="13sp"
+                    android:textColor="@color/text_hint"
+                    tools:text="3 แอป" />
+            </LinearLayout>
+
+            <!-- Loading shimmer -->
             <LinearLayout
                 android:id="@+id/shimmerLayout"
                 android:layout_width="match_parent"
@@ -104,7 +136,14 @@
 
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
-                    android:layout_height="120dp"
+                    android:layout_height="80dp"
+                    android:layout_marginBottom="12dp"
+                    app:cardCornerRadius="16dp"
+                    app:cardBackgroundColor="@color/shimmer_color" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="80dp"
                     android:layout_marginBottom="12dp"
                     app:cardCornerRadius="16dp"
                     app:cardBackgroundColor="@color/shimmer_color" />
@@ -116,212 +155,42 @@
                     app:cardBackgroundColor="@color/shimmer_color" />
             </LinearLayout>
 
-            <!-- Main content (shown after loading) -->
+            <!-- App cards list -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvApps"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                android:visibility="gone"
+                tools:listitem="@layout/item_app_card" />
+
+            <!-- Error state -->
             <LinearLayout
-                android:id="@+id/contentLayout"
+                android:id="@+id/errorLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
+                android:gravity="center"
+                android:padding="24dp"
                 android:visibility="gone">
 
-                <!-- Release Notes Card -->
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
+                <TextView
+                    android:id="@+id/tvErrorMessage"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:textSize="14sp"
+                    android:textColor="@color/text_secondary"
+                    android:gravity="center"
                     android:layout_marginBottom="16dp"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="2dp"
-                    app:cardBackgroundColor="@color/surface">
+                    tools:text="ไม่สามารถโหลดข้อมูลได้" />
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="20dp">
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical"
-                            android:layout_marginBottom="12dp">
-
-                            <ImageView
-                                android:layout_width="20dp"
-                                android:layout_height="20dp"
-                                android:src="@drawable/ic_release_notes"
-                                app:tint="@color/primary" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="รายละเอียดการอัปเดต"
-                                android:textSize="16sp"
-                                android:textStyle="bold"
-                                android:textColor="@color/text_primary"
-                                android:layout_marginStart="8dp" />
-                        </LinearLayout>
-
-                        <TextView
-                            android:id="@+id/tvReleaseName"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textSize="15sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/primary"
-                            android:layout_marginBottom="8dp"
-                            tools:text="BearApp v1.0.0 - Initial Release" />
-
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="1dp"
-                            android:background="@color/divider"
-                            android:layout_marginBottom="12dp" />
-
-                        <TextView
-                            android:id="@+id/tvReleaseBody"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:textSize="14sp"
-                            android:textColor="@color/text_secondary"
-                            android:lineSpacingMultiplier="1.6"
-                            tools:text="- ปรับปรุงประสิทธิภาพ\n- แก้ไขบั๊กที่รายงาน\n- เพิ่มฟีเจอร์ใหม่" />
-
-                        <TextView
-                            android:id="@+id/tvPublishedDate"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textSize="12sp"
-                            android:textColor="@color/text_hint"
-                            android:layout_marginTop="12dp"
-                            tools:text="เผยแพร่: 2024-01-01" />
-
-                        <TextView
-                            android:id="@+id/tvNoApk"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="⚠️ ยังไม่มีไฟล์ APK ใน release นี้"
-                            android:textSize="13sp"
-                            android:textColor="@color/warning"
-                            android:layout_marginTop="8dp"
-                            android:visibility="gone" />
-
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <!-- Download Action Card -->
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRetry"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="4dp"
-                    app:cardBackgroundColor="@color/primary_container">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="20dp">
-
-                        <!-- Progress container -->
-                        <LinearLayout
-                            android:id="@+id/progressContainer"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:visibility="gone"
-                            android:layout_marginBottom="8dp">
-
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:orientation="horizontal"
-                                android:gravity="center_vertical"
-                                android:layout_marginBottom="8dp">
-
-                                <TextView
-                                    android:layout_width="0dp"
-                                    android:layout_height="wrap_content"
-                                    android:layout_weight="1"
-                                    android:text="กำลังดาวน์โหลด..."
-                                    android:textSize="14sp"
-                                    android:textColor="@color/primary" />
-
-                                <TextView
-                                    android:id="@+id/tvProgressPercent"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:textSize="14sp"
-                                    android:textStyle="bold"
-                                    android:textColor="@color/primary"
-                                    tools:text="50%" />
-                            </LinearLayout>
-
-                            <com.google.android.material.progressindicator.LinearProgressIndicator
-                                android:id="@+id/progressBar"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                app:indicatorColor="@color/primary"
-                                app:trackColor="@color/primary_20"
-                                app:trackCornerRadius="4dp" />
-                        </LinearLayout>
-
-                        <!-- Download button -->
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnDownload"
-                            android:layout_width="match_parent"
-                            android:layout_height="56dp"
-                            android:text="@string/btn_download"
-                            android:textSize="16sp"
-                            android:textStyle="bold"
-                            app:backgroundTint="@color/primary"
-                            app:cornerRadius="28dp"
-                            app:icon="@drawable/ic_download"
-                            app:iconGravity="textStart"
-                            app:iconPadding="8dp"
-                            android:visibility="gone" />
-
-                        <!-- Install button -->
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnInstall"
-                            android:layout_width="match_parent"
-                            android:layout_height="56dp"
-                            android:text="@string/btn_install"
-                            android:textSize="16sp"
-                            android:textStyle="bold"
-                            app:backgroundTint="@color/success"
-                            app:cornerRadius="28dp"
-                            app:icon="@drawable/ic_install"
-                            app:iconGravity="textStart"
-                            app:iconPadding="8dp"
-                            android:visibility="gone" />
-
-                        <!-- Retry button -->
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnRetry"
-                            android:layout_width="match_parent"
-                            android:layout_height="56dp"
-                            android:text="@string/btn_retry"
-                            android:textSize="16sp"
-                            app:backgroundTint="@color/error"
-                            app:cornerRadius="28dp"
-                            android:visibility="gone" />
-
-                        <!-- Error message -->
-                        <TextView
-                            android:id="@+id/tvErrorMessage"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:textSize="13sp"
-                            android:textColor="@color/error"
-                            android:gravity="center"
-                            android:layout_marginTop="8dp"
-                            android:visibility="gone"
-                            tools:text="เกิดข้อผิดพลาด กรุณาลองใหม่" />
-
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
+                    android:text="ลองใหม่"
+                    app:backgroundTint="@color/primary"
+                    app:cornerRadius="20dp" />
             </LinearLayout>
 
         </LinearLayout>

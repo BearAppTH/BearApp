@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Red rounded background -->
+    <path
+        android:fillColor="#FF0000"
+        android:pathData="M8,14 C8,10.7 10.7,8 14,8 L34,8 C37.3,8 40,10.7 40,14 L40,34 C40,37.3 37.3,40 34,40 L14,40 C10.7,40 8,37.3 8,34 Z" />
+    <!-- White play button -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M20,16 L33,24 L20,32 Z" />
+</vector>

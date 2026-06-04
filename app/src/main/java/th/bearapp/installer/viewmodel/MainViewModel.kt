@@ -11,28 +11,26 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import th.bearapp.installer.model.AppRelease
+import th.bearapp.installer.adapter.CardDownloadState
+import th.bearapp.installer.model.AppItem
 import th.bearapp.installer.network.GitHubApiService
-
-enum class DownloadState {
-    IDLE, LOADING, READY_TO_DOWNLOAD, DOWNLOADING, DOWNLOAD_COMPLETE, ERROR
-}
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val _releaseInfo = MutableLiveData<AppRelease?>()
-    val releaseInfo: LiveData<AppRelease?> = _releaseInfo
+    private val _apps = MutableLiveData<List<AppItem>>()
+    val apps: LiveData<List<AppItem>> = _apps
 
-    private val _downloadState = MutableLiveData(DownloadState.IDLE)
-    val downloadState: LiveData<DownloadState> = _downloadState
-
-    private val _downloadProgress = MutableLiveData(0)
-    val downloadProgress: LiveData<Int> = _downloadProgress
+    private val _isLoading = MutableLiveData(false)
+    val isLoading: LiveData<Boolean> = _isLoading
 
     private val _errorMessage = MutableLiveData<String?>()
     val errorMessage: LiveData<String?> = _errorMessage
 
-    private var progressJob: Job? = null
+    // Per-app download state: appId -> (state, progress)
+    private val _downloadStates = MutableLiveData<Map<String, Pair<CardDownloadState, Int>>>(emptyMap())
+    val downloadStates: LiveData<Map<String, Pair<CardDownloadState, Int>>> = _downloadStates
+
+    private val progressJobs = mutableMapOf<String, Job>()
     private val apiService = GitHubApiService()
 
     companion object {
@@ -40,34 +38,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         const val GITHUB_REPO = "bearapp"
     }
 
-    fun fetchLatestRelease() {
-        _downloadState.value = DownloadState.LOADING
+    fun fetchApps() {
+        _isLoading.value = true
         _errorMessage.value = null
-        _releaseInfo.value = null
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val release = apiService.getLatestRelease(GITHUB_OWNER, GITHUB_REPO)
-                _releaseInfo.postValue(release)
-                _downloadState.postValue(DownloadState.READY_TO_DOWNLOAD)
+                val config = apiService.getAppsConfig(GITHUB_OWNER, GITHUB_REPO)
+                _apps.postValue(config.apps)
             } catch (e: Exception) {
                 _errorMessage.postValue(e.message ?: "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ")
-                _downloadState.postValue(DownloadState.ERROR)
+            } finally {
+                _isLoading.postValue(false)
             }
         }
     }
 
-    fun onDownloadStarted() {
-        _downloadState.value = DownloadState.DOWNLOADING
-        _downloadProgress.value = 0
+    fun onDownloadStarted(appId: String) {
+        updateState(appId, CardDownloadState.DOWNLOADING, 0)
     }
 
-    fun trackDownload(downloadId: Long, downloadManager: DownloadManager) {
-        progressJob?.cancel()
-        progressJob = viewModelScope.launch(Dispatchers.IO) {
+    fun trackDownload(appId: String, downloadId: Long, downloadManager: DownloadManager) {
+        progressJobs[appId]?.cancel()
+        progressJobs[appId] = viewModelScope.launch(Dispatchers.IO) {
             while (isActive) {
-                val query = DownloadManager.Query().setFilterById(downloadId)
-                val cursor = downloadManager.query(query)
+                val cursor = downloadManager.query(DownloadManager.Query().setFilterById(downloadId))
                 if (cursor.moveToFirst()) {
                     val dlIdx = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
                     val totalIdx = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
@@ -76,7 +71,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val total = cursor.getLong(totalIdx)
                     val status = cursor.getInt(statusIdx)
                     if (total > 0) {
-                        _downloadProgress.postValue(((downloaded * 100) / total).toInt())
+                        updateState(appId, CardDownloadState.DOWNLOADING, ((downloaded * 100) / total).toInt())
                     }
                     if (status == DownloadManager.STATUS_SUCCESSFUL || status == DownloadManager.STATUS_FAILED) {
                         cursor.close()
@@ -89,20 +84,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun onDownloadComplete() {
-        progressJob?.cancel()
-        _downloadProgress.value = 100
-        _downloadState.value = DownloadState.DOWNLOAD_COMPLETE
+    fun onDownloadComplete(appId: String) {
+        progressJobs[appId]?.cancel()
+        updateState(appId, CardDownloadState.COMPLETE, 100)
     }
 
-    fun onDownloadFailed() {
-        progressJob?.cancel()
-        _errorMessage.value = "การดาวน์โหลดล้มเหลว กรุณาลองใหม่"
-        _downloadState.value = DownloadState.ERROR
+    fun onDownloadFailed(appId: String) {
+        progressJobs[appId]?.cancel()
+        updateState(appId, CardDownloadState.ERROR, 0)
+    }
+
+    private fun updateState(appId: String, state: CardDownloadState, progress: Int) {
+        val current = _downloadStates.value.orEmpty().toMutableMap()
+        current[appId] = Pair(state, progress)
+        _downloadStates.postValue(current)
     }
 
     override fun onCleared() {
         super.onCleared()
-        progressJob?.cancel()
+        progressJobs.values.forEach { it.cancel() }
     }
 }

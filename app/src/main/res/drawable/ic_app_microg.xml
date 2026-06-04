@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Green circle background -->
+    <path
+        android:fillColor="#34A853"
+        android:pathData="M24,4 C35.05,4 44,12.95 44,24 C44,35.05 35.05,44 24,44 C12.95,44 4,35.05 4,24 C4,12.95 12.95,4 24,4 Z" />
+    <!-- Bear head white -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M24,14 C28.5,14 32,17.5 32,22 C32,26.5 28.5,30 24,30 C19.5,30 16,26.5 16,22 C16,17.5 19.5,14 24,14 Z" />
+    <!-- Left ear -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M17,18 L13,12 L20,16 Z" />
+    <!-- Right ear -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M31,18 L35,12 L28,16 Z" />
+    <!-- Brown face -->
+    <path
+        android:fillColor="#8D6E63"
+        android:pathData="M24,16 C27.3,16 30,18.7 30,22 C30,25.3 27.3,28 24,28 C20.7,28 18,25.3 18,22 C18,18.7 20.7,16 24,16 Z" />
+    <!-- White muzzle -->
+    <path
+        android:fillColor="#FFCC80"
+        android:pathData="M20.5,23.5 C20.5,21.8 22.1,20.5 24,20.5 C25.9,20.5 27.5,21.8 27.5,23.5 C27.5,25.2 25.9,26.5 24,26.5 C22.1,26.5 20.5,25.2 20.5,23.5 Z" />
+    <!-- Eyes -->
+    <path
+        android:fillColor="#1C1008"
+        android:pathData="M21,20.5 C21,19.7 21.7,19 22.5,19 C23.3,19 24,19.7 24,20.5 C24,21.3 23.3,22 22.5,22 C21.7,22 21,21.3 21,20.5 Z" />
+    <path
+        android:fillColor="#1C1008"
+        android:pathData="M24,20.5 C24,19.7 24.7,19 25.5,19 C26.3,19 27,19.7 27,20.5 C27,21.3 26.3,22 25.5,22 C24.7,22 24,21.3 24,20.5 Z" />
+    <!-- White letters MG at bottom -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M16,33 L20,33 L20,39 L18,39 L18,35.5 L17.2,37 L16.8,37 L16,35.5 L16,39 L16,33 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M21.5,33 L26,33 C26,33 27.5,33.5 27.5,36 C27.5,38.5 26,39 24,39 L24,37 C25,37 25.5,36.5 25.5,36 C25.5,35.5 25,35 24,35 L24,33 Z M21.5,33 L21.5,39 L23.5,39 L23.5,33 Z" />
+</vector>

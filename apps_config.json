@@ -1,0 +1,25 @@
+{
+  "apps": [
+    {
+      "id": "youtube",
+      "name": "YouTube",
+      "version": "",
+      "updated_at": "",
+      "download_url": ""
+    },
+    {
+      "id": "youtube_music",
+      "name": "YouTube Music",
+      "version": "",
+      "updated_at": "",
+      "download_url": ""
+    },
+    {
+      "id": "bear_microg",
+      "name": "Bear MicroG",
+      "version": "",
+      "updated_at": "",
+      "download_url": ""
+    }
+  ]
+}
