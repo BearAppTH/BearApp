@@ -67,7 +67,10 @@ class MainActivity : AppCompatActivity() {
         setupRecyclerView()
         observeViewModel()
         setupListeners()
-        viewModel.fetchApps()
+        // Skip re-fetch on theme/language recreate to avoid state flash
+        if (viewModel.apps.value.isNullOrEmpty()) {
+            viewModel.fetchApps()
+        }
     }
 
     override fun onResume() {
@@ -101,6 +104,10 @@ class MainActivity : AppCompatActivity() {
     private fun observeViewModel() {
         viewModel.apps.observe(this) { apps ->
             adapter.setApps(apps)
+            // Re-apply install states immediately so there's no flash of wrong buttons
+            viewModel.installStates.value?.forEach { (appId, pair) ->
+                adapter.updateInstallState(appId, pair.first, pair.second)
+            }
             binding.tvAppCount.text = getString(R.string.app_count_format, apps.size)
         }
 
