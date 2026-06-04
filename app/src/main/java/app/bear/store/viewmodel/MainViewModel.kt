@@ -1,7 +1,6 @@
 package app.bear.store.viewmodel
 
 import android.app.Application
-import android.app.DownloadManager
 import android.content.pm.PackageManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
@@ -9,13 +8,18 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import app.bear.store.adapter.CardDownloadState
 import app.bear.store.model.AppItem
 import app.bear.store.model.InstallState
 import app.bear.store.network.GitHubApiService
+import java.io.File
+import java.util.concurrent.TimeUnit
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -34,8 +38,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _installStates = MutableLiveData<Map<String, Pair<InstallState, String?>>>(emptyMap())
     val installStates: LiveData<Map<String, Pair<InstallState, String?>>> = _installStates
 
+    // One-shot event: triggers auto-install when download completes
+    private val _autoInstallTrigger = MutableSharedFlow<AppItem>(extraBufferCapacity = 10)
+    val autoInstallTrigger = _autoInstallTrigger.asSharedFlow()
+
     private val progressJobs = mutableMapOf<String, Job>()
     private val apiService = GitHubApiService()
+
+    private val downloadClient = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(0, TimeUnit.SECONDS)
+        .build()
 
     companion object {
         const val GITHUB_OWNER = "bearappth"
@@ -90,6 +103,56 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun startDownload(app: AppItem, destFile: File) {
+        if (progressJobs[app.id]?.isActive == true) return
+        updateDownloadState(app.id, CardDownloadState.DOWNLOADING, 0)
+        progressJobs[app.id] = viewModelScope.launch(Dispatchers.IO) {
+            val call = downloadClient.newCall(Request.Builder().url(app.downloadUrl).build())
+            try {
+                val response = call.execute()
+                if (!response.isSuccessful) throw Exception("HTTP ${response.code}")
+                val body = response.body ?: throw Exception("ไม่ได้รับข้อมูล")
+                val total = body.contentLength()
+                var downloaded = 0L
+                destFile.parentFile?.mkdirs()
+                destFile.outputStream().use { out ->
+                    body.byteStream().use { inp ->
+                        val buf = ByteArray(8 * 1024)
+                        var n: Int
+                        while (isActive && inp.read(buf).also { n = it } >= 0) {
+                            out.write(buf, 0, n)
+                            downloaded += n
+                            if (total > 0) {
+                                updateDownloadState(
+                                    app.id, CardDownloadState.DOWNLOADING,
+                                    ((downloaded * 100) / total).toInt()
+                                )
+                            }
+                        }
+                    }
+                }
+                if (isActive) {
+                    updateDownloadState(app.id, CardDownloadState.COMPLETE, 100)
+                    _autoInstallTrigger.emit(app)
+                } else {
+                    destFile.delete()
+                    updateDownloadState(app.id, CardDownloadState.IDLE, 0)
+                }
+            } catch (e: Exception) {
+                call.cancel()
+                destFile.delete()
+                updateDownloadState(app.id, CardDownloadState.ERROR, 0)
+            }
+        }
+    }
+
+    fun cancelDownload(appId: String) {
+        progressJobs[appId]?.cancel()
+        progressJobs.remove(appId)
+    }
+
+    fun getApp(appId: String): AppItem? = _apps.value?.find { it.id == appId }
+
     fun resetCompletedDownloads() {
         val current = _downloadStates.value.orEmpty()
         val hasCompleted = current.values.any { it.first == CardDownloadState.COMPLETE }
@@ -113,46 +176,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (n < ins) return false
         }
         return false
-    }
-
-    fun onDownloadStarted(appId: String) {
-        updateDownloadState(appId, CardDownloadState.DOWNLOADING, 0)
-    }
-
-    fun trackDownload(appId: String, downloadId: Long, downloadManager: DownloadManager) {
-        progressJobs[appId]?.cancel()
-        progressJobs[appId] = viewModelScope.launch(Dispatchers.IO) {
-            while (isActive) {
-                val cursor = downloadManager.query(DownloadManager.Query().setFilterById(downloadId))
-                if (cursor.moveToFirst()) {
-                    val dlIdx = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
-                    val totalIdx = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
-                    val statusIdx = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-                    val downloaded = cursor.getLong(dlIdx)
-                    val total = cursor.getLong(totalIdx)
-                    val status = cursor.getInt(statusIdx)
-                    if (total > 0) {
-                        updateDownloadState(appId, CardDownloadState.DOWNLOADING, ((downloaded * 100) / total).toInt())
-                    }
-                    if (status == DownloadManager.STATUS_SUCCESSFUL || status == DownloadManager.STATUS_FAILED) {
-                        cursor.close()
-                        break
-                    }
-                }
-                cursor.close()
-                delay(300)
-            }
-        }
-    }
-
-    fun onDownloadComplete(appId: String) {
-        progressJobs[appId]?.cancel()
-        updateDownloadState(appId, CardDownloadState.COMPLETE, 100)
-    }
-
-    fun onDownloadFailed(appId: String) {
-        progressJobs[appId]?.cancel()
-        updateDownloadState(appId, CardDownloadState.ERROR, 0)
     }
 
     private fun updateDownloadState(appId: String, state: CardDownloadState, progress: Int) {

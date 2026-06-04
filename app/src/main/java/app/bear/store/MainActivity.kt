@@ -1,14 +1,9 @@
 package app.bear.store
 
-import android.app.DownloadManager
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
 import android.provider.Settings
 import android.view.View
 import android.widget.Toast
@@ -16,23 +11,22 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import app.bear.store.adapter.AppCardAdapter
 import app.bear.store.databinding.ActivityMainBinding
 import app.bear.store.model.AppItem
 import app.bear.store.viewmodel.MainViewModel
+import kotlinx.coroutines.launch
 import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels()
-
     private lateinit var adapter: AppCardAdapter
 
-    private val activeDownloads = mutableMapOf<Long, String>()
     private val downloadedFiles = mutableMapOf<String, File>()
-
     private var pendingDownloadApp: AppItem? = null
 
     private val installPermissionLauncher = registerForActivityResult(
@@ -49,25 +43,6 @@ class MainActivity : AppCompatActivity() {
         viewModel.refreshInstallStates()
     }
 
-    private val downloadCompleteReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
-            val appId = activeDownloads[id] ?: return
-            val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-            val cursor = dm.query(DownloadManager.Query().setFilterById(id))
-            if (cursor.moveToFirst()) {
-                val statusIdx = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-                if (cursor.getInt(statusIdx) == DownloadManager.STATUS_SUCCESSFUL) {
-                    viewModel.onDownloadComplete(appId)
-                } else {
-                    viewModel.onDownloadFailed(appId)
-                }
-            }
-            cursor.close()
-            activeDownloads.remove(id)
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -76,8 +51,6 @@ class MainActivity : AppCompatActivity() {
         setupRecyclerView()
         observeViewModel()
         setupListeners()
-
-        registerDownloadReceiver()
         viewModel.fetchApps()
     }
 
@@ -128,6 +101,13 @@ class MainActivity : AppCompatActivity() {
                 adapter.updateInstallState(appId, pair.first, pair.second)
             }
         }
+
+        // Auto-install immediately when download finishes
+        lifecycleScope.launch {
+            viewModel.autoInstallTrigger.collect { app ->
+                installApk(app)
+            }
+        }
     }
 
     private fun setupListeners() {
@@ -150,34 +130,23 @@ class MainActivity : AppCompatActivity() {
 
     private fun beginDownload(app: AppItem) {
         val fileName = "${app.id}-${app.version.ifBlank { "latest" }}.apk"
-        val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-
-        val request = DownloadManager.Request(Uri.parse(app.downloadUrl)).apply {
-            setTitle(app.name)
-            setDescription("กำลังดาวน์โหลด ${app.name}...")
-            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
-            setMimeType("application/vnd.android.package-archive")
-        }
-
-        val downloadId = dm.enqueue(request)
-        activeDownloads[downloadId] = app.id
-        downloadedFiles[app.id] = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            fileName
-        )
-
-        viewModel.onDownloadStarted(app.id)
-        viewModel.trackDownload(app.id, downloadId, dm)
+        val destFile = File(getExternalFilesDir(null), fileName)
+        downloadedFiles[app.id] = destFile
+        viewModel.startDownload(app, destFile)
     }
 
     private fun installApk(app: AppItem) {
         val file = downloadedFiles[app.id] ?: return
-        val uri = FileProvider.getUriForFile(this, "$packageName.provider", file)
-        startActivity(Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, "application/vnd.android.package-archive")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        })
+        if (!file.exists()) return
+        try {
+            val uri = FileProvider.getUriForFile(this, "$packageName.provider", file)
+            startActivity(Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            })
+        } catch (e: Exception) {
+            Toast.makeText(this, "ไม่สามารถติดตั้งได้", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun uninstallApp(app: AppItem) {
@@ -192,23 +161,5 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Toast.makeText(this, "ไม่สามารถถอนการติดตั้งได้", Toast.LENGTH_SHORT).show()
         }
-    }
-
-    private fun registerDownloadReceiver() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(
-                downloadCompleteReceiver,
-                IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
-                Context.RECEIVER_NOT_EXPORTED
-            )
-        } else {
-            @Suppress("UnspecifiedRegisterReceiverFlag")
-            registerReceiver(downloadCompleteReceiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
-        }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        try { unregisterReceiver(downloadCompleteReceiver) } catch (_: Exception) {}
     }
 }
