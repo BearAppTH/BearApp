@@ -16,14 +16,13 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- Main row: icon + info + button -->
+        <!-- Top row: icon + info -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
-            <!-- App Icon -->
             <ImageView
                 android:id="@+id/ivAppIcon"
                 android:layout_width="52dp"
@@ -33,14 +32,12 @@
                 android:contentDescription=""
                 tools:src="@drawable/ic_app_youtube" />
 
-            <!-- App Info -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:orientation="vertical"
-                android:layout_marginStart="12dp"
-                android:layout_marginEnd="8dp">
+                android:layout_marginStart="12dp">
 
                 <TextView
                     android:id="@+id/tvAppName"
@@ -51,21 +48,27 @@
                     android:textColor="@color/text_primary"
                     tools:text="YouTube" />
 
-                <LinearLayout
+                <!-- Shown only when UPDATE_AVAILABLE -->
+                <TextView
+                    android:id="@+id/tvVersionNew"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginTop="3dp">
+                    android:textSize="12sp"
+                    android:textColor="@color/warning"
+                    android:textStyle="bold"
+                    android:layout_marginTop="3dp"
+                    android:visibility="gone"
+                    tools:text="ใหม่: 19.48.00" />
 
-                    <TextView
-                        android:id="@+id/tvVersion"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textSize="12sp"
-                        android:textColor="@color/text_secondary"
-                        tools:text="เวอร์ชัน 19.47.53" />
-                </LinearLayout>
+                <!-- Always shown: config version or installed version -->
+                <TextView
+                    android:id="@+id/tvVersionInstalled"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_secondary"
+                    android:layout_marginTop="3dp"
+                    tools:text="เวอร์ชัน 19.47.53" />
 
                 <TextView
                     android:id="@+id/tvUpdatedAt"
@@ -76,35 +79,6 @@
                     android:layout_marginTop="2dp"
                     tools:text="อัปเดต: 15 ม.ค. 2567" />
             </LinearLayout>
-
-            <!-- Action buttons (stacked, only one visible at a time) -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnDownload"
-                    android:layout_width="wrap_content"
-                    android:layout_height="40dp"
-                    android:text="ดาวน์โหลด"
-                    android:textSize="12sp"
-                    app:backgroundTint="@color/primary"
-                    app:cornerRadius="20dp"
-                    android:paddingHorizontal="14dp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnInstall"
-                    android:layout_width="wrap_content"
-                    android:layout_height="40dp"
-                    android:text="ติดตั้ง"
-                    android:textSize="12sp"
-                    app:backgroundTint="@color/success"
-                    app:cornerRadius="20dp"
-                    android:paddingHorizontal="14dp"
-                    android:visibility="gone" />
-            </LinearLayout>
         </LinearLayout>
 
         <!-- Progress row (shown while downloading) -->
@@ -113,7 +87,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="12dp"
             android:visibility="gone">
 
             <LinearLayout
@@ -148,6 +122,51 @@
                 app:indicatorColor="@color/primary"
                 app:trackColor="@color/primary_20"
                 app:trackCornerRadius="4dp" />
+        </LinearLayout>
+
+        <!-- Install button: shown after download completes, full-width -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnInstall"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:text="ติดตั้ง"
+            android:textSize="13sp"
+            app:backgroundTint="@color/success"
+            app:cornerRadius="22dp"
+            android:layout_marginTop="12dp"
+            android:visibility="gone" />
+
+        <!-- Action row: download/update/retry + optional uninstall -->
+        <LinearLayout
+            android:id="@+id/layoutActionRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDownload"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:text="ดาวน์โหลด"
+                android:textSize="13sp"
+                app:backgroundTint="@color/primary"
+                app:cornerRadius="22dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnUninstall"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="ถอนการติดตั้ง"
+                android:textSize="13sp"
+                android:textColor="@color/error"
+                app:strokeColor="@color/error"
+                app:cornerRadius="22dp"
+                android:visibility="gone" />
         </LinearLayout>
 
     </LinearLayout>

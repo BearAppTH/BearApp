@@ -17,7 +17,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import th.bearapp.installer.adapter.AppCardAdapter
-import th.bearapp.installer.adapter.CardDownloadState
 import th.bearapp.installer.databinding.ActivityMainBinding
 import th.bearapp.installer.model.AppItem
 import th.bearapp.installer.viewmodel.MainViewModel
@@ -30,9 +29,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var adapter: AppCardAdapter
 
-    // downloadId -> appId
     private val activeDownloads = mutableMapOf<Long, String>()
-    // appId -> downloaded file
     private val downloadedFiles = mutableMapOf<String, File>()
 
     private var pendingDownloadApp: AppItem? = null
@@ -77,10 +74,16 @@ class MainActivity : AppCompatActivity() {
         viewModel.fetchApps()
     }
 
+    override fun onResume() {
+        super.onResume()
+        viewModel.refreshInstallStates()
+    }
+
     private fun setupRecyclerView() {
         adapter = AppCardAdapter(
             onDownload = { app -> checkPermissionAndDownload(app) },
-            onInstall  = { app -> installApk(app) }
+            onInstall  = { app -> installApk(app) },
+            onUninstall = { app -> uninstallApp(app) }
         )
         binding.rvApps.layoutManager = LinearLayoutManager(this)
         binding.rvApps.adapter = adapter
@@ -111,6 +114,12 @@ class MainActivity : AppCompatActivity() {
                 adapter.updateState(appId, pair.first, pair.second)
             }
         }
+
+        viewModel.installStates.observe(this) { states ->
+            states.forEach { (appId, pair) ->
+                adapter.updateInstallState(appId, pair.first, pair.second)
+            }
+        }
     }
 
     private fun setupListeners() {
@@ -136,7 +145,7 @@ class MainActivity : AppCompatActivity() {
         val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
 
         val request = DownloadManager.Request(Uri.parse(app.downloadUrl)).apply {
-            setTitle("${app.name}")
+            setTitle(app.name)
             setDescription("กำลังดาวน์โหลด ${app.name}...")
             setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
@@ -160,6 +169,13 @@ class MainActivity : AppCompatActivity() {
         startActivity(Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, "application/vnd.android.package-archive")
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        })
+    }
+
+    private fun uninstallApp(app: AppItem) {
+        if (app.packageName.isBlank()) return
+        startActivity(Intent(Intent.ACTION_DELETE).apply {
+            data = Uri.parse("package:${app.packageName}")
         })
     }
 

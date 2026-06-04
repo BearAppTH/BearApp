@@ -7,7 +7,8 @@ data class AppItem(
     val name: String,
     val version: String,
     val updatedAt: String,
-    val downloadUrl: String
+    val downloadUrl: String,
+    val packageName: String = ""
 ) {
     val hasDownloadUrl: Boolean get() = downloadUrl.isNotBlank()
 }

@@ -48,11 +48,55 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           retention-days: 30
 
+  auto-tag:
+    name: Auto Tag on Version Change
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from build.gradle
+        id: version
+        run: |
+          VERSION_NAME=$(grep -oP '(?<=versionName ")([^"]+)' app/build.gradle)
+          VERSION_CODE=$(grep -oP '(?<=versionCode )\d+' app/build.gradle)
+          TAG="v${VERSION_NAME}.${VERSION_CODE}"
+          echo "TAG=${TAG}" >> $GITHUB_OUTPUT
+          echo "Detected version: ${TAG}"
+
+      - name: Check if tag already exists
+        id: tag_check
+        run: |
+          if git ls-remote --tags origin "refs/tags/${{ steps.version.outputs.TAG }}" | grep -q .; then
+            echo "EXISTS=true" >> $GITHUB_OUTPUT
+            echo "Tag ${{ steps.version.outputs.TAG }} already exists, skipping."
+          else
+            echo "EXISTS=false" >> $GITHUB_OUTPUT
+            echo "Tag ${{ steps.version.outputs.TAG }} is new, will create."
+          fi
+
+      - name: Create and push tag
+        if: steps.tag_check.outputs.EXISTS == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ steps.version.outputs.TAG }}"
+          git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" "${{ steps.version.outputs.TAG }}"
+
   release:
     name: Create GitHub Release
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
