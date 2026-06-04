@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BearApp Installer</string>
+    <string name="app_display_name">BearApp</string>
+
+    <string name="btn_download">ดาวน์โหลดแอป</string>
+    <string name="btn_install">ติดตั้งทันที</string>
+    <string name="btn_retry">ลองใหม่อีกครั้ง</string>
+
+    <string name="status_checking">กำลังตรวจสอบเวอร์ชันล่าสุด…</string>
+    <string name="status_downloading">กำลังดาวน์โหลด</string>
+    <string name="status_complete">ดาวน์โหลดเสร็จสิ้น</string>
+    <string name="status_error">เกิดข้อผิดพลาด</string>
+</resources>

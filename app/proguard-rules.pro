@@ -1,0 +1,3 @@
+-keep class th.bearapp.installer.model.** { *; }
+-keepattributes Signature
+-keepattributes *Annotation*
