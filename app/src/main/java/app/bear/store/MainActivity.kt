@@ -43,6 +43,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val uninstallLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        viewModel.refreshInstallStates()
+    }
+
     private val downloadCompleteReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
@@ -177,10 +183,12 @@ class MainActivity : AppCompatActivity() {
     private fun uninstallApp(app: AppItem) {
         if (app.packageName.isBlank()) return
         try {
-            startActivity(Intent(Intent.ACTION_DELETE).apply {
-                data = Uri.parse("package:${app.packageName}")
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            })
+            uninstallLauncher.launch(
+                Intent(Intent.ACTION_DELETE).apply {
+                    data = Uri.parse("package:${app.packageName}")
+                    putExtra(Intent.EXTRA_RETURN_RESULT, true)
+                }
+            )
         } catch (e: Exception) {
             Toast.makeText(this, "ไม่สามารถถอนการติดตั้งได้", Toast.LENGTH_SHORT).show()
         }
