@@ -12,7 +12,9 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.widget.addTextChangedListener
 import androidx.core.content.FileProvider
+import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import app.bear.store.adapter.AppCardAdapter
@@ -23,6 +25,7 @@ import app.bear.store.model.AppItem
 import app.bear.store.model.SelfUpdateState
 import app.bear.store.viewmodel.MainViewModel
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -45,8 +48,11 @@ class MainActivity : AppCompatActivity() {
 
     private val uninstallLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
-    ) {
+    ) { result ->
         viewModel.refreshInstallStates()
+        if (result.resultCode == RESULT_OK) {
+            Toast.makeText(this, R.string.toast_uninstall_success, Toast.LENGTH_SHORT).show()
+        }
     }
 
     // ─── Locale ──────────────────────────────────────────────────────────────
@@ -95,7 +101,8 @@ class MainActivity : AppCompatActivity() {
         adapter = AppCardAdapter(
             onDownload  = { app -> checkPermissionAndDownload(app) },
             onInstall   = { app -> installApk(app) },
-            onUninstall = { app -> uninstallApp(app) }
+            onUninstall = { app -> uninstallApp(app) },
+            onCancel    = { app -> viewModel.cancelDownload(app.id) }
         )
         binding.rvApps.layoutManager = LinearLayoutManager(this)
         binding.rvApps.adapter = adapter
@@ -125,6 +132,12 @@ class MainActivity : AppCompatActivity() {
             binding.tvErrorMessage.text = msg ?: ""
         }
 
+        viewModel.isUsingCache.observe(this) { isCache ->
+            if (isCache) {
+                Snackbar.make(binding.root, R.string.toast_cached_data, Snackbar.LENGTH_LONG).show()
+            }
+        }
+
         viewModel.downloadStates.observe(this) { states ->
             states.forEach { (appId, pair) ->
                 adapter.updateState(appId, pair.first, pair.second)
@@ -149,6 +162,9 @@ class MainActivity : AppCompatActivity() {
     private fun setupListeners() {
         binding.btnRefresh.setOnClickListener { viewModel.fetchApps() }
         binding.btnRetry.setOnClickListener { viewModel.fetchApps() }
+        binding.etSearch.addTextChangedListener { text ->
+            adapter.filter(text?.toString() ?: "")
+        }
     }
 
     // ─── Settings dialog ─────────────────────────────────────────────────────
@@ -210,13 +226,15 @@ class MainActivity : AppCompatActivity() {
 
         viewModel.checkSelfUpdate()
 
-        viewModel.selfUpdateState.observe(this) { state ->
-            if (!dialog.isShowing && state !is SelfUpdateState.Downloading) return@observe
+        val updateObserver = Observer<SelfUpdateState> { state ->
+            if (!dialog.isShowing && state !is SelfUpdateState.Downloading) return@Observer
             updateAboutDialogState(dialogBinding, state) { _, downloadUrl ->
                 dialog.dismiss()
                 startSelfUpdate(downloadUrl)
             }
         }
+        viewModel.selfUpdateState.observe(this, updateObserver)
+        dialog.setOnDismissListener { viewModel.selfUpdateState.removeObserver(updateObserver) }
 
         dialog.show()
     }

@@ -69,7 +69,8 @@ class GitHubApiService {
                 version = a.get("version")?.asString ?: "",
                 updatedAt = a.get("updated_at")?.asString ?: "",
                 downloadUrl = a.get("download_url")?.asString ?: "",
-                packageName = a.get("package_name")?.asString ?: ""
+                packageName = a.get("package_name")?.asString ?: "",
+                iconUrl = a.get("icon_url")?.asString ?: ""
             )
         }
         return AppsConfig(apps)

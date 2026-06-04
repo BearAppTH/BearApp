@@ -10,7 +10,11 @@
     <string name="action_refresh">Refresh</string>
     <string name="section_all_apps">All Apps</string>
 
+    <!-- Search -->
+    <string name="hint_search">Search apps…</string>
+
     <!-- Buttons -->
+    <string name="btn_cancel">Cancel</string>
     <string name="btn_download">Download</string>
     <string name="btn_update">Update</string>
     <string name="btn_install">Install</string>
@@ -51,6 +55,8 @@
     <string name="toast_self_update_start">Downloading new Bear Store version…</string>
     <string name="toast_install_failed">Cannot install</string>
     <string name="toast_uninstall_failed">Cannot uninstall</string>
+    <string name="toast_uninstall_success">Uninstalled</string>
+    <string name="toast_cached_data">No internet — showing cached data</string>
 
     <!-- Errors -->
     <string name="error_unknown">An unknown error occurred</string>
