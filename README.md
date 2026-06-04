@@ -1,77 +1,84 @@
-# Bear Store
+<div align="center">
 
-แอป Android สำหรับดาวน์โหลดและจัดการแอปในระบบ Bear — ดึงข้อมูลจาก `apps_config.json` บน GitHub แบบ real-time
+# 🐻 Bear Store
 
-## ฟีเจอร์
+**App Store ส่วนตัวสำหรับแอป Bear**  
+ดาวน์โหลด · ติดตั้ง · อัปเดต ครบในที่เดียว
 
-- **In-App Download Manager** — ดาวน์โหลด APK ผ่าน OkHttp โดยตรง แสดง progress ใน card แต่ละแอปแบบ real-time
-- **Auto-Install** — เปิด installer อัตโนมัติทันทีที่ดาวน์โหลดเสร็จ ไม่ต้องกดปุ่มแยก
-- **ตรวจสอบสถานะติดตั้ง** — เทียบเวอร์ชันกับแอปที่ติดตั้งบนเครื่อง แสดง 3 สถานะ:
-  - ยังไม่ติดตั้ง → ปุ่ม ดาวน์โหลด
-  - ติดตั้งแล้ว เวอร์ชันล่าสุด → ปุ่ม ถอนการติดตั้ง
-  - มีอัปเดต → ปุ่ม อัปเดต + ถอนการติดตั้ง
-- **ถอนการติดตั้ง** — กดถอนการติดตั้งได้โดยตรงจาก Bear Store
-- **รองรับ Android 11+** — ใช้ `QUERY_ALL_PACKAGES` ตรวจสอบ package ทุกตัวได้
-- **Material Design 3** — ธีมหมีน้ำตาล, รองรับ Dark Mode
+[![Download](https://img.shields.io/github/v/release/bearappth/bearapp?label=ดาวน์โหลด&logo=android&color=brown)](../../releases/latest)
+[![Android](https://img.shields.io/badge/Android-10%2B-green?logo=android)](../../releases/latest)
 
-## แอปที่รองรับ
+</div>
 
-| แอป | Package | เวอร์ชันล่าสุด |
-|-----|---------|--------------|
-| YouTube | `app.bear.tube` | ดูใน [apps_config.json](apps_config.json) |
-| YouTube Music | `app.bear.music` | ดูใน [apps_config.json](apps_config.json) |
-| Bear MicroG | `app.bear.android.gms` | ดูใน [apps_config.json](apps_config.json) |
+---
 
-เพิ่ม/แก้ไขแอปได้ที่ [apps_config.json](apps_config.json) บน branch `main`
+## ดาวน์โหลด Bear Store
 
-## Requirements
+1. ไปที่ [**Releases → ดาวน์โหลด APK ล่าสุด**](../../releases/latest)
+2. เปิดไฟล์ `.apk` ที่ดาวน์โหลดมา
+3. อนุญาตการติดตั้งจากแหล่งที่ไม่รู้จัก → กด **ติดตั้ง**
 
-- Android 10+ (API 29)
-- การเชื่อมต่ออินเทอร์เน็ต
-- อนุญาต "ติดตั้งแอปจากแหล่งที่ไม่รู้จัก" สำหรับ Bear Store
+---
 
-## Tech Stack
+## Bear Store ทำอะไรได้บ้าง?
 
-- **Kotlin** + AndroidX
-- **AndroidViewModel** + LiveData + Coroutines
-- **OkHttp** สำหรับดาวน์โหลดและดึงข้อมูล
-- **Gson** สำหรับ parse JSON
-- **Material Design 3** + RecyclerView + ViewBinding
-- `minSdk 29` · `targetSdk 36`
+### 📥 ดาวน์โหลดและติดตั้งแอปในคลิกเดียว
+กดปุ่ม **ดาวน์โหลด** แล้วรอดู progress bar วิ่งใน app — เมื่อเสร็จ dialog ติดตั้งขึ้นมาให้อัตโนมัติ ไม่ต้องออกจาก Bear Store
 
-## CI/CD — GitHub Actions
+### 🔄 รู้ว่าแอปไหนมีอัปเดต
+Bear Store เทียบเวอร์ชันที่ติดตั้งบนเครื่องกับเวอร์ชันล่าสุดของเราให้อัตโนมัติ
 
-ทุก push ขึ้น `main` จะ:
+| สถานะ | ปุ่มที่เห็น |
+|-------|-----------|
+| ยังไม่ติดตั้ง | **ดาวน์โหลด** |
+| ติดตั้งแล้ว เวอร์ชันล่าสุด | **ถอนการติดตั้ง** |
+| มีเวอร์ชันใหม่ | **อัปเดต** + **ถอนการติดตั้ง** |
 
-1. build Release APK พร้อม sign ด้วย keystore ที่เก็บใน GitHub Secrets
-2. สร้าง tag อัตโนมัติ `v1.0.<run_number>`
-3. สร้าง GitHub Release พร้อม APK และ changelog
+### 🗑️ ถอนการติดตั้งได้เลย
+กดปุ่ม **ถอนการติดตั้ง** ในแต่ละแอปได้โดยตรง ไม่ต้องไปหาใน Settings
 
-ดาวน์โหลด APK ล่าสุดได้ที่ [Releases](../../releases/latest)
+---
 
-## Permissions
+## แอปที่มีใน Bear Store
 
-| Permission | เหตุผล |
-|-----------|--------|
-| `INTERNET` | ดึงข้อมูลแอปและดาวน์โหลด APK |
-| `REQUEST_INSTALL_PACKAGES` | ติดตั้ง APK ที่ดาวน์โหลดมา |
-| `REQUEST_DELETE_PACKAGES` | แสดง dialog ถอนการติดตั้ง (API 28+) |
-| `QUERY_ALL_PACKAGES` | ตรวจสอบเวอร์ชันแอปที่ติดตั้ง (Android 11+) |
+| แอป | เวอร์ชันล่าสุด | รายละเอียด |
+|-----|--------------|-----------|
+| 🎬 **YouTube** | `21.21.80` | YouTube ปรับแต่งพิเศษ ไม่มีโฆษณา |
+| 🎵 **YouTube Music** | `9.21.51` | YouTube Music ปรับแต่งพิเศษ |
+| ⚙️ **Bear MicroG** | `3.5.3` | Google Services สำหรับแอป Bear |
 
-## การตั้งค่า Keystore (สำหรับ maintainer)
+> แอปจะอัปเดตเวอร์ชันใหม่โดยทีม Bear — Bear Store จะแจ้งเตือนให้อัปเดตอัตโนมัติ
 
-เพิ่ม GitHub Secrets ต่อไปนี้ใน repository settings:
+---
+
+## วิธีติดตั้ง (ครั้งแรก)
+
+> **แนะนำ:** ติดตั้ง **Bear MicroG** ก่อน แล้วค่อยติดตั้ง YouTube และ YouTube Music
 
 ```
-KEYSTORE_BASE64   — keystore ที่ encode เป็น base64
-KEYSTORE_PASSWORD — password ของ keystore
-KEY_ALIAS         — alias ของ key
-KEY_PASSWORD      — password ของ key
+1. ติดตั้ง Bear Store
+2. เปิดแอป → กด "ดาวน์โหลด" ที่ Bear MicroG ก่อน
+3. รอติดตั้ง → กลับมา Bear Store
+4. ดาวน์โหลด YouTube และ YouTube Music
 ```
 
-สร้าง keystore ใหม่:
-```bash
-keytool -genkey -v -keystore bearstore-release.jks \
-  -alias bearstore -keyalg RSA -keysize 2048 -validity 10000
-base64 -w 0 bearstore-release.jks
-```
+---
+
+## คำถามที่พบบ่อย
+
+**Q: ต้องอนุญาตอะไรบ้าง?**  
+A: Bear Store ขอ permission เพียงเท่าที่จำเป็น — อินเทอร์เน็ต, ติดตั้งแอป, และถอนการติดตั้งแอป
+
+**Q: ปลอดภัยไหม?**  
+A: Source code เปิดให้ตรวจสอบได้ทั้งหมดใน repository นี้ APK ทุกตัวถูก build และ sign โดย GitHub Actions อัตโนมัติ
+
+**Q: รองรับ Android เวอร์ชันไหน?**  
+A: Android 10 (API 29) ขึ้นไป
+
+---
+
+<div align="center">
+
+**[⬇️ ดาวน์โหลด Bear Store](../../releases/latest)**
+
+</div>
