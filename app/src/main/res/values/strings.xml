@@ -64,6 +64,19 @@
     <string name="error_check_failed">ตรวจสอบไม่ได้</string>
     <string name="error_download_cancelled">ยกเลิกการดาวน์โหลด</string>
     <string name="error_download_failed">ดาวน์โหลดไม่ได้</string>
+    <string name="error_insufficient_space">พื้นที่เก็บข้อมูลไม่เพียงพอ</string>
+    <string name="error_rate_limit">GitHub API rate limit — ลองใหม่ภายหลัง</string>
+
+    <!-- App detail dialog -->
+    <string name="label_description">รายละเอียด</string>
+    <string name="label_whats_new">มีอะไรใหม่</string>
+    <string name="label_no_description">ไม่มีข้อมูลเพิ่มเติม</string>
+
+    <!-- Notifications -->
+    <string name="notif_channel_name">Bear Store</string>
+    <string name="notif_channel_desc">แจ้งเตือนเมื่อมีอัปเดตสำหรับแอปที่ติดตั้ง</string>
+    <string name="notif_updates_title">มีอัปเดตใหม่</string>
+    <string name="notif_updates_message">%d แอปมีอัปเดตใหม่</string>
 
     <!-- Menu -->
     <string name="menu_about">เกี่ยวกับแอป</string>

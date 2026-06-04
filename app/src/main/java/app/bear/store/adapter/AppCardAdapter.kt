@@ -1,5 +1,10 @@
 package app.bear.store.adapter
 
+import android.graphics.Typeface
+import android.text.SpannableString
+import android.text.Spannable
+import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -27,7 +32,8 @@ class AppCardAdapter(
     private val onDownload: (AppItem) -> Unit,
     private val onInstall: (AppItem) -> Unit,
     private val onUninstall: (AppItem) -> Unit,
-    private val onCancel: (AppItem) -> Unit
+    private val onCancel: (AppItem) -> Unit,
+    private val onDetails: (AppItem) -> Unit
 ) : RecyclerView.Adapter<AppCardAdapter.ViewHolder>() {
 
     private val allItems = mutableListOf<AppCardState>()
@@ -88,7 +94,23 @@ class AppCardAdapter(
         val ctx = holder.itemView.context
 
         with(holder.binding) {
-            tvAppName.text = app.name
+            root.setOnClickListener { onDetails(app) }
+
+            if (currentQuery.isNotBlank()) {
+                val idx = app.name.indexOf(currentQuery, ignoreCase = true)
+                if (idx >= 0) {
+                    val spannable = SpannableString(app.name)
+                    val primaryColor = ContextCompat.getColor(ctx, R.color.primary)
+                    spannable.setSpan(StyleSpan(Typeface.BOLD), idx, idx + currentQuery.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    spannable.setSpan(ForegroundColorSpan(primaryColor), idx, idx + currentQuery.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    tvAppName.text = spannable
+                } else {
+                    tvAppName.text = app.name
+                }
+            } else {
+                tvAppName.text = app.name
+            }
+
             tvUpdatedAt.text = if (app.updatedAt.isNotBlank())
                 ctx.getString(R.string.updated_at_format, app.updatedAt) else ""
             tvUpdatedAt.visibility = if (app.updatedAt.isNotBlank()) View.VISIBLE else View.GONE

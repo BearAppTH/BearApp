@@ -9,7 +9,9 @@ data class AppItem(
     val updatedAt: String,
     val downloadUrl: String,
     val packageName: String = "",
-    val iconUrl: String = ""
+    val iconUrl: String = "",
+    val description: String = "",
+    val changelog: String = ""
 ) {
     val hasDownloadUrl: Boolean get() = downloadUrl.isNotBlank()
 }

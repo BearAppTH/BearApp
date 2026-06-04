@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import android.os.StatFs
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import app.bear.store.BuildConfig
@@ -56,7 +57,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val selfUpdateInstallTrigger = _selfUpdateInstallTrigger.asSharedFlow()
 
     private val progressJobs = mutableMapOf<String, Job>()
-    private val apiService = GitHubApiService()
+    private var selfUpdateJob: Job? = null
+    private val apiService = GitHubApiService(getApplication())
     private val gson = Gson()
 
     private val downloadClient = OkHttpClient.Builder()
@@ -138,6 +140,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val total = body.contentLength()
                 var downloaded = 0L
                 destFile.parentFile?.mkdirs()
+                if (total > 0) {
+                    val statsPath = destFile.parentFile?.path
+                        ?: getApplication<Application>().filesDir.path
+                    val stats = StatFs(statsPath)
+                    val available = stats.availableBlocksLong * stats.blockSizeLong
+                    if (available < total) throw Exception(str(R.string.error_insufficient_space))
+                }
                 destFile.outputStream().use { out ->
                     body.byteStream().use { inp ->
                         val buf = ByteArray(8 * 1024)
@@ -198,9 +207,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun cancelSelfUpdate() {
+        selfUpdateJob?.cancel()
+        selfUpdateJob = null
+        _selfUpdateState.postValue(SelfUpdateState.Error(str(R.string.error_download_cancelled)))
+    }
+
     fun startSelfUpdate(downloadUrl: String, destFile: File) {
         _selfUpdateState.postValue(SelfUpdateState.Downloading(0))
-        viewModelScope.launch(Dispatchers.IO) {
+        selfUpdateJob = viewModelScope.launch(Dispatchers.IO) {
             val call = downloadClient.newCall(Request.Builder().url(downloadUrl).build())
             try {
                 val response = call.execute()
@@ -293,5 +308,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     override fun onCleared() {
         super.onCleared()
         progressJobs.values.forEach { it.cancel() }
+        selfUpdateJob?.cancel()
     }
 }

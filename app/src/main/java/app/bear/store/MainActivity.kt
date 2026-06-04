@@ -1,7 +1,9 @@
 package app.bear.store
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -12,18 +14,21 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.widget.addTextChangedListener
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import app.bear.store.adapter.AppCardAdapter
 import app.bear.store.databinding.ActivityMainBinding
 import app.bear.store.databinding.DialogAboutBinding
+import app.bear.store.databinding.DialogAppDetailBinding
 import app.bear.store.databinding.DialogSettingsBinding
 import app.bear.store.model.AppItem
 import app.bear.store.model.SelfUpdateState
 import app.bear.store.viewmodel.MainViewModel
+import coil.load
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
@@ -55,6 +60,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* granted or denied silently */ }
+
     // ─── Locale ──────────────────────────────────────────────────────────────
 
     override fun attachBaseContext(newBase: Context) {
@@ -73,6 +82,7 @@ class MainActivity : AppCompatActivity() {
         setupRecyclerView()
         observeViewModel()
         setupListeners()
+        requestNotificationPermission()
         // Skip re-fetch on theme/language recreate to avoid state flash
         if (viewModel.apps.value.isNullOrEmpty()) {
             viewModel.fetchApps()
@@ -102,7 +112,8 @@ class MainActivity : AppCompatActivity() {
             onDownload  = { app -> checkPermissionAndDownload(app) },
             onInstall   = { app -> installApk(app) },
             onUninstall = { app -> uninstallApp(app) },
-            onCancel    = { app -> viewModel.cancelDownload(app.id) }
+            onCancel    = { app -> viewModel.cancelDownload(app.id) },
+            onDetails   = { app -> showAppDetailDialog(app) }
         )
         binding.rvApps.layoutManager = LinearLayoutManager(this)
         binding.rvApps.adapter = adapter
@@ -228,10 +239,18 @@ class MainActivity : AppCompatActivity() {
 
         val updateObserver = Observer<SelfUpdateState> { state ->
             if (!dialog.isShowing && state !is SelfUpdateState.Downloading) return@Observer
-            updateAboutDialogState(dialogBinding, state) { _, downloadUrl ->
-                dialog.dismiss()
-                startSelfUpdate(downloadUrl)
-            }
+            updateAboutDialogState(
+                b = dialogBinding,
+                state = state,
+                onCancelClick = {
+                    viewModel.cancelSelfUpdate()
+                    dialog.dismiss()
+                },
+                onUpdateClick = { _, downloadUrl ->
+                    dialog.dismiss()
+                    startSelfUpdate(downloadUrl)
+                }
+            )
         }
         viewModel.selfUpdateState.observe(this, updateObserver)
         dialog.setOnDismissListener { viewModel.selfUpdateState.removeObserver(updateObserver) }
@@ -242,6 +261,7 @@ class MainActivity : AppCompatActivity() {
     private fun updateAboutDialogState(
         b: DialogAboutBinding,
         state: SelfUpdateState,
+        onCancelClick: () -> Unit,
         onUpdateClick: (tagName: String, downloadUrl: String) -> Unit
     ) {
         when (state) {
@@ -278,7 +298,8 @@ class MainActivity : AppCompatActivity() {
                 b.tvDownloadProgress.visibility = View.VISIBLE
                 b.btnSelfUpdate.visibility = View.VISIBLE
                 b.btnSelfUpdate.text = getString(R.string.about_downloading_progress, state.progress)
-                b.btnSelfUpdate.isEnabled = false
+                b.btnSelfUpdate.isEnabled = true
+                b.btnSelfUpdate.setOnClickListener { onCancelClick() }
             }
             is SelfUpdateState.ReadyToInstall -> {
                 b.tvUpdateStatus.text = getString(R.string.about_ready_to_install)
@@ -352,6 +373,62 @@ class MainActivity : AppCompatActivity() {
             )
         } catch (e: Exception) {
             Toast.makeText(this, R.string.toast_uninstall_failed, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // ─── App detail dialog ───────────────────────────────────────────────────
+
+    private fun showAppDetailDialog(app: AppItem) {
+        val b = DialogAppDetailBinding.inflate(LayoutInflater.from(this))
+        b.tvDetailName.text = app.name
+        b.tvDetailVersion.text = if (app.version.isNotBlank())
+            getString(R.string.version_format, app.version)
+        else
+            getString(R.string.version_unspecified)
+
+        val iconRes = when (app.id) {
+            "youtube"       -> R.drawable.ic_app_youtube
+            "youtube_music" -> R.drawable.ic_app_youtube_music
+            "bear_microg"   -> R.drawable.ic_app_microg
+            else            -> R.drawable.ic_bear_logo
+        }
+        if (app.iconUrl.isNotBlank()) {
+            b.ivDetailIcon.load(app.iconUrl) {
+                placeholder(iconRes)
+                error(iconRes)
+                crossfade(true)
+            }
+        } else {
+            b.ivDetailIcon.setImageResource(iconRes)
+        }
+
+        if (app.description.isNotBlank()) {
+            b.layoutDetailDescription.visibility = View.VISIBLE
+            b.tvDetailDescription.text = app.description
+        }
+        if (app.changelog.isNotBlank()) {
+            b.layoutDetailChangelog.visibility = View.VISIBLE
+            b.tvDetailChangelog.text = app.changelog
+        }
+        if (app.description.isBlank() && app.changelog.isBlank()) {
+            b.tvDetailEmpty.visibility = View.VISIBLE
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setView(b.root)
+            .setPositiveButton(R.string.btn_close, null)
+            .show()
+    }
+
+    // ─── Notification permission ─────────────────────────────────────────────
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
         }
     }
 }

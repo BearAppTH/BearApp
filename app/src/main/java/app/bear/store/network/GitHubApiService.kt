@@ -1,15 +1,17 @@
 package app.bear.store.network
 
+import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import app.bear.store.R
 import app.bear.store.model.AppItem
 import app.bear.store.model.AppRelease
 import app.bear.store.model.AppsConfig
 import java.util.concurrent.TimeUnit
 
-class GitHubApiService {
+class GitHubApiService(private val context: Context) {
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -27,7 +29,10 @@ class GitHubApiService {
             .build()
 
         val response = client.newCall(request).execute()
-        val body = response.body?.string() ?: throw Exception("ไม่ได้รับข้อมูล")
+        if (response.code == 403 || response.code == 429) {
+            throw Exception(context.getString(R.string.error_rate_limit))
+        }
+        val body = response.body?.string() ?: throw Exception(context.getString(R.string.error_no_data))
         if (!response.isSuccessful) throw Exception("HTTP ${response.code}")
 
         return parseAppsConfig(body)
@@ -42,7 +47,10 @@ class GitHubApiService {
             .header("User-Agent", "BearApp-Installer/1.0")
             .build()
         val response = client.newCall(request).execute()
-        val body = response.body?.string() ?: throw Exception("ไม่ได้รับข้อมูล")
+        if (response.code == 403 || response.code == 429) {
+            throw Exception(context.getString(R.string.error_rate_limit))
+        }
+        val body = response.body?.string() ?: throw Exception(context.getString(R.string.error_no_data))
         if (!response.isSuccessful) throw Exception("HTTP ${response.code}")
         val obj = JsonParser.parseString(body).asJsonObject
         val assets = obj.getAsJsonArray("assets")
@@ -70,7 +78,9 @@ class GitHubApiService {
                 updatedAt = a.get("updated_at")?.asString ?: "",
                 downloadUrl = a.get("download_url")?.asString ?: "",
                 packageName = a.get("package_name")?.asString ?: "",
-                iconUrl = a.get("icon_url")?.asString ?: ""
+                iconUrl = a.get("icon_url")?.asString ?: "",
+                description = a.get("description")?.asString ?: "",
+                changelog = a.get("changelog")?.asString ?: ""
             )
         }
         return AppsConfig(apps)
