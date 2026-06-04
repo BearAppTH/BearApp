@@ -5,11 +5,13 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import app.bear.store.R
 import app.bear.store.databinding.ItemAppCardBinding
 import app.bear.store.model.AppItem
 import app.bear.store.model.InstallState
+import coil.load
 
 enum class CardDownloadState { IDLE, DOWNLOADING, COMPLETE, ERROR }
 
@@ -24,18 +26,26 @@ data class AppCardState(
 class AppCardAdapter(
     private val onDownload: (AppItem) -> Unit,
     private val onInstall: (AppItem) -> Unit,
-    private val onUninstall: (AppItem) -> Unit
+    private val onUninstall: (AppItem) -> Unit,
+    private val onCancel: (AppItem) -> Unit
 ) : RecyclerView.Adapter<AppCardAdapter.ViewHolder>() {
 
+    private val allItems = mutableListOf<AppCardState>()
     private val items = mutableListOf<AppCardState>()
+    private var currentQuery = ""
 
     fun setApps(apps: List<AppItem>) {
-        items.clear()
-        items.addAll(apps.map { AppCardState(it) })
-        notifyDataSetChanged()
+        val newAll = apps.map { app ->
+            allItems.find { it.app.id == app.id }?.copy(app = app) ?: AppCardState(app)
+        }
+        allItems.clear()
+        allItems.addAll(newAll)
+        applyFilter()
     }
 
     fun updateState(appId: String, state: CardDownloadState, progress: Int = 0) {
+        val allIdx = allItems.indexOfFirst { it.app.id == appId }
+        if (allIdx >= 0) allItems[allIdx] = allItems[allIdx].copy(downloadState = state, progress = progress)
         val idx = items.indexOfFirst { it.app.id == appId }
         if (idx < 0) return
         items[idx] = items[idx].copy(downloadState = state, progress = progress)
@@ -43,10 +53,26 @@ class AppCardAdapter(
     }
 
     fun updateInstallState(appId: String, installState: InstallState, installedVersion: String?) {
+        val allIdx = allItems.indexOfFirst { it.app.id == appId }
+        if (allIdx >= 0) allItems[allIdx] = allItems[allIdx].copy(installState = installState, installedVersion = installedVersion)
         val idx = items.indexOfFirst { it.app.id == appId }
         if (idx < 0) return
         items[idx] = items[idx].copy(installState = installState, installedVersion = installedVersion)
         notifyItemChanged(idx)
+    }
+
+    fun filter(query: String) {
+        currentQuery = query
+        applyFilter()
+    }
+
+    private fun applyFilter() {
+        val filtered = if (currentQuery.isBlank()) allItems.toList()
+        else allItems.filter { it.app.name.contains(currentQuery, ignoreCase = true) }
+        val diffResult = DiffUtil.calculateDiff(DiffCallback(items.toList(), filtered))
+        items.clear()
+        items.addAll(filtered)
+        diffResult.dispatchUpdatesTo(this)
     }
 
     inner class ViewHolder(val binding: ItemAppCardBinding) : RecyclerView.ViewHolder(binding.root)
@@ -66,7 +92,16 @@ class AppCardAdapter(
             tvUpdatedAt.text = if (app.updatedAt.isNotBlank())
                 ctx.getString(R.string.updated_at_format, app.updatedAt) else ""
             tvUpdatedAt.visibility = if (app.updatedAt.isNotBlank()) View.VISIBLE else View.GONE
-            ivAppIcon.setImageResource(iconResFor(app.id))
+
+            if (app.iconUrl.isNotBlank()) {
+                ivAppIcon.load(app.iconUrl) {
+                    placeholder(iconResFor(app.id))
+                    error(iconResFor(app.id))
+                    crossfade(true)
+                }
+            } else {
+                ivAppIcon.setImageResource(iconResFor(app.id))
+            }
 
             // Version display
             when (cardState.installState) {
@@ -147,6 +182,7 @@ class AppCardAdapter(
                     progressLayout.visibility = View.VISIBLE
                     progressBar.progress = cardState.progress
                     tvProgress.text = "${cardState.progress}%"
+                    btnCancel.setOnClickListener { onCancel(app) }
                     btnInstall.visibility = View.GONE
                     layoutActionRow.visibility = View.GONE
                 }
@@ -194,5 +230,17 @@ class AppCardAdapter(
         "youtube_music" -> R.drawable.ic_app_youtube_music
         "bear_microg" -> R.drawable.ic_app_microg
         else -> R.drawable.ic_bear_logo
+    }
+
+    private class DiffCallback(
+        private val oldList: List<AppCardState>,
+        private val newList: List<AppCardState>
+    ) : DiffUtil.Callback() {
+        override fun getOldListSize() = oldList.size
+        override fun getNewListSize() = newList.size
+        override fun areItemsTheSame(oldPos: Int, newPos: Int) =
+            oldList[oldPos].app.id == newList[newPos].app.id
+        override fun areContentsTheSame(oldPos: Int, newPos: Int) =
+            oldList[oldPos] == newList[newPos]
     }
 }

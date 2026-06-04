@@ -10,7 +10,11 @@
     <string name="action_refresh">รีเฟรช</string>
     <string name="section_all_apps">แอปทั้งหมด</string>
 
+    <!-- Search -->
+    <string name="hint_search">ค้นหาแอป…</string>
+
     <!-- Buttons -->
+    <string name="btn_cancel">ยกเลิก</string>
     <string name="btn_download">ดาวน์โหลด</string>
     <string name="btn_update">อัปเดต</string>
     <string name="btn_install">ติดตั้ง</string>
@@ -51,6 +55,8 @@
     <string name="toast_self_update_start">กำลังดาวน์โหลด Bear Store เวอร์ชันใหม่…</string>
     <string name="toast_install_failed">ไม่สามารถติดตั้งได้</string>
     <string name="toast_uninstall_failed">ไม่สามารถถอนการติดตั้งได้</string>
+    <string name="toast_uninstall_success">ถอนการติดตั้งแล้ว</string>
+    <string name="toast_cached_data">ไม่มีอินเทอร์เน็ต — แสดงข้อมูลที่บันทึกไว้</string>
 
     <!-- Errors -->
     <string name="error_unknown">เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ</string>

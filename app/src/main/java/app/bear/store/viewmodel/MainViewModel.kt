@@ -6,6 +6,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -35,6 +37,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _errorMessage = MutableLiveData<String?>()
     val errorMessage: LiveData<String?> = _errorMessage
 
+    private val _isUsingCache = MutableLiveData(false)
+    val isUsingCache: LiveData<Boolean> = _isUsingCache
+
     private val _downloadStates = MutableLiveData<Map<String, Pair<CardDownloadState, Int>>>(emptyMap())
     val downloadStates: LiveData<Map<String, Pair<CardDownloadState, Int>>> = _downloadStates
 
@@ -52,15 +57,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val progressJobs = mutableMapOf<String, Job>()
     private val apiService = GitHubApiService()
+    private val gson = Gson()
 
     private val downloadClient = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(0, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
         .build()
 
     companion object {
         const val GITHUB_OWNER = "bearappth"
         const val GITHUB_REPO = "bearapp"
+        private const val CACHE_FILE = "apps_cache.json"
     }
 
     private fun str(id: Int) = getApplication<Application>().getString(id)
@@ -68,13 +75,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun fetchApps() {
         _isLoading.value = true
         _errorMessage.value = null
+        _isUsingCache.value = false
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val config = apiService.getAppsConfig(GITHUB_OWNER, GITHUB_REPO)
+                saveAppsCache(config.apps)
                 _apps.postValue(config.apps)
                 checkAllInstallStates(config.apps)
             } catch (e: Exception) {
-                _errorMessage.postValue(e.message ?: str(R.string.error_unknown))
+                loadAppsCache()?.let { cached ->
+                    _apps.postValue(cached)
+                    checkAllInstallStates(cached)
+                    _isUsingCache.postValue(true)
+                } ?: _errorMessage.postValue(e.message ?: str(R.string.error_unknown))
             } finally {
                 _isLoading.postValue(false)
             }
@@ -159,6 +172,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun cancelDownload(appId: String) {
         progressJobs[appId]?.cancel()
         progressJobs.remove(appId)
+        updateDownloadState(appId, CardDownloadState.IDLE, 0)
     }
 
     fun checkSelfUpdate() {
@@ -238,6 +252,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 if (v.first == CardDownloadState.COMPLETE) Pair(CardDownloadState.IDLE, 0) else v
             }
         )
+    }
+
+    private fun saveAppsCache(apps: List<AppItem>) {
+        try {
+            File(getApplication<Application>().filesDir, CACHE_FILE)
+                .writeText(gson.toJson(apps))
+        } catch (_: Exception) {}
+    }
+
+    private fun loadAppsCache(): List<AppItem>? {
+        return try {
+            val file = File(getApplication<Application>().filesDir, CACHE_FILE)
+            if (!file.exists()) return null
+            val type = object : TypeToken<List<AppItem>>() {}.type
+            gson.fromJson(file.readText(), type)
+        } catch (_: Exception) { null }
     }
 
     private fun isVersionNewer(configVersion: String, installedVersion: String): Boolean {
