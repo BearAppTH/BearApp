@@ -352,7 +352,15 @@ class MainActivity : AppCompatActivity() {
                 b.tvUpdateStatus.text = getString(R.string.about_ready_to_install)
                 b.progressSelfUpdate.visibility = View.GONE
                 b.tvDownloadProgress.visibility = View.GONE
-                b.btnSelfUpdate.visibility = View.GONE
+                val apkFile = File(getExternalFilesDir(null), "bear-store-update.apk")
+                if (apkFile.exists()) {
+                    b.btnSelfUpdate.visibility = View.VISIBLE
+                    b.btnSelfUpdate.text = getString(R.string.btn_install)
+                    b.btnSelfUpdate.isEnabled = true
+                    b.btnSelfUpdate.setOnClickListener { installApkFromFile(apkFile) }
+                } else {
+                    b.btnSelfUpdate.visibility = View.GONE
+                }
             }
             is SelfUpdateState.Error -> {
                 b.tvUpdateStatus.text = getString(R.string.about_update_error, state.msg)

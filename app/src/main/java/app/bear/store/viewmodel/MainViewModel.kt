@@ -209,11 +209,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun cancelSelfUpdate() {
         selfUpdateJob?.cancel()
         selfUpdateJob = null
-        _selfUpdateState.postValue(SelfUpdateState.Error(str(R.string.error_download_cancelled)))
+        _selfUpdateState.value = SelfUpdateState.Error(str(R.string.error_download_cancelled))
     }
 
     fun startSelfUpdate(downloadUrl: String, destFile: File) {
-        _selfUpdateState.postValue(SelfUpdateState.Downloading(0))
+        _selfUpdateState.value = SelfUpdateState.Downloading(0)
         selfUpdateJob = viewModelScope.launch(Dispatchers.IO) {
             val call = downloadClient.newCall(Request.Builder().url(downloadUrl).build())
             try {
