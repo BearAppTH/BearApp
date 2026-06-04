@@ -68,23 +68,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun checkAllInstallStates(apps: List<AppItem>) {
         val pm = getApplication<Application>().packageManager
         val states = apps.associate { app ->
-            val installedVersion: String? = if (app.packageName.isNotBlank()) {
-                try {
-                    @Suppress("DEPRECATION")
-                    pm.getPackageInfo(app.packageName, 0).versionName
-                } catch (e: PackageManager.NameNotFoundException) {
-                    null
-                }
-            } else null
-
+            val (isInstalled, installedVersion) = getInstalledInfo(pm, app.packageName)
             val installState = when {
-                installedVersion == null -> InstallState.NOT_INSTALLED
-                isVersionNewer(app.version, installedVersion) -> InstallState.UPDATE_AVAILABLE
+                !isInstalled -> InstallState.NOT_INSTALLED
+                isVersionNewer(app.version, installedVersion ?: "") -> InstallState.UPDATE_AVAILABLE
                 else -> InstallState.INSTALLED_UP_TO_DATE
             }
             app.id to Pair(installState, installedVersion)
         }
         _installStates.postValue(states)
+    }
+
+    private fun getInstalledInfo(pm: PackageManager, packageName: String): Pair<Boolean, String?> {
+        if (packageName.isBlank()) return Pair(false, null)
+        return try {
+            @Suppress("DEPRECATION")
+            val info = pm.getPackageInfo(packageName, 0)
+            Pair(true, info.versionName)
+        } catch (e: PackageManager.NameNotFoundException) {
+            Pair(false, null)
+        }
+    }
+
+    fun resetCompletedDownloads() {
+        val current = _downloadStates.value.orEmpty()
+        val hasCompleted = current.values.any { it.first == CardDownloadState.COMPLETE }
+        if (!hasCompleted) return
+        _downloadStates.postValue(
+            current.mapValues { (_, v) ->
+                if (v.first == CardDownloadState.COMPLETE) Pair(CardDownloadState.IDLE, 0) else v
+            }
+        )
     }
 
     private fun isVersionNewer(configVersion: String, installedVersion: String): Boolean {
