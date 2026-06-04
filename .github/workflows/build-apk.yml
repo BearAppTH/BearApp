@@ -1,0 +1,104 @@
+name: Build APK
+
+on:
+  push:
+    branches:
+      - main
+      - 'claude/**'
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --stacktrace
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bearapp-release
+          path: app/build/outputs/apk/release/*.apk
+          retention-days: 30
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Rename APK
+        run: |
+          mv app/build/outputs/apk/release/app-release-unsigned.apk \
+             app/build/outputs/apk/release/bearapp-${{ steps.version.outputs.VERSION }}.apk || \
+          mv app/build/outputs/apk/release/app-release.apk \
+             app/build/outputs/apk/release/bearapp-${{ steps.version.outputs.VERSION }}.apk
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.VERSION }}
+          name: "BearApp ${{ steps.version.outputs.VERSION }}"
+          body: |
+            ## BearApp ${{ steps.version.outputs.VERSION }}
+
+            ### ดาวน์โหลด
+            กดที่ไฟล์ `.apk` ด้านล่างเพื่อดาวน์โหลด
+
+            ### วิธีติดตั้ง
+            1. ดาวน์โหลดไฟล์ `.apk`
+            2. เปิดไฟล์และอนุญาตการติดตั้งจากแหล่งที่ไม่รู้จัก
+            3. กด "ติดตั้ง"
+          draft: false
+          prerelease: false
+          files: app/build/outputs/apk/release/bearapp-*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
