@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import app.bear.store.BuildConfig
+import app.bear.store.R
 import app.bear.store.adapter.CardDownloadState
 import app.bear.store.model.AppItem
 import app.bear.store.model.InstallState
@@ -40,11 +41,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _installStates = MutableLiveData<Map<String, Pair<InstallState, String?>>>(emptyMap())
     val installStates: LiveData<Map<String, Pair<InstallState, String?>>> = _installStates
 
-    // One-shot event: triggers auto-install when download completes
     private val _autoInstallTrigger = MutableSharedFlow<AppItem>(extraBufferCapacity = 10)
     val autoInstallTrigger = _autoInstallTrigger.asSharedFlow()
 
-    // Self-update: Bear Store updating itself
     private val _selfUpdateState = MutableLiveData<SelfUpdateState>(SelfUpdateState.Checking)
     val selfUpdateState: LiveData<SelfUpdateState> = _selfUpdateState
 
@@ -64,6 +63,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         const val GITHUB_REPO = "bearapp"
     }
 
+    private fun str(id: Int) = getApplication<Application>().getString(id)
+
     fun fetchApps() {
         _isLoading.value = true
         _errorMessage.value = null
@@ -73,7 +74,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _apps.postValue(config.apps)
                 checkAllInstallStates(config.apps)
             } catch (e: Exception) {
-                _errorMessage.postValue(e.message ?: "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ")
+                _errorMessage.postValue(e.message ?: str(R.string.error_unknown))
             } finally {
                 _isLoading.postValue(false)
             }
@@ -120,7 +121,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val response = call.execute()
                 if (!response.isSuccessful) throw Exception("HTTP ${response.code}")
-                val body = response.body ?: throw Exception("ไม่ได้รับข้อมูล")
+                val body = response.body ?: throw Exception(str(R.string.error_no_data))
                 val total = body.contentLength()
                 var downloaded = 0L
                 destFile.parentFile?.mkdirs()
@@ -176,7 +177,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _selfUpdateState.postValue(SelfUpdateState.UpToDate)
                 }
             } catch (e: Exception) {
-                _selfUpdateState.postValue(SelfUpdateState.Error(e.message ?: "ตรวจสอบไม่ได้"))
+                _selfUpdateState.postValue(
+                    SelfUpdateState.Error(e.message ?: str(R.string.error_check_failed))
+                )
             }
         }
     }
@@ -188,7 +191,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val response = call.execute()
                 if (!response.isSuccessful) throw Exception("HTTP ${response.code}")
-                val body = response.body ?: throw Exception("ไม่ได้รับข้อมูล")
+                val body = response.body ?: throw Exception(str(R.string.error_no_data))
                 val total = body.contentLength()
                 var downloaded = 0L
                 destFile.parentFile?.mkdirs()
@@ -212,12 +215,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _selfUpdateInstallTrigger.emit(destFile)
                 } else {
                     destFile.delete()
-                    _selfUpdateState.postValue(SelfUpdateState.Error("ยกเลิกการดาวน์โหลด"))
+                    _selfUpdateState.postValue(SelfUpdateState.Error(str(R.string.error_download_cancelled)))
                 }
             } catch (e: Exception) {
                 call.cancel()
                 destFile.delete()
-                _selfUpdateState.postValue(SelfUpdateState.Error(e.message ?: "ดาวน์โหลดไม่ได้"))
+                _selfUpdateState.postValue(
+                    SelfUpdateState.Error(e.message ?: str(R.string.error_download_failed))
+                )
             }
         }
     }

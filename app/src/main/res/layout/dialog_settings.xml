@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="24dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="16dp">
+
+    <!-- Theme section -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/settings_theme"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_hint"
+        android:letterSpacing="0.08"
+        android:layout_marginBottom="4dp" />
+
+    <RadioGroup
+        android:id="@+id/rgTheme"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp">
+
+        <RadioButton
+            android:id="@+id/rbThemeSystem"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_theme_system"
+            android:textSize="15sp"
+            android:paddingVertical="6dp" />
+
+        <RadioButton
+            android:id="@+id/rbThemeLight"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_theme_light"
+            android:textSize="15sp"
+            android:paddingVertical="6dp" />
+
+        <RadioButton
+            android:id="@+id/rbThemeDark"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_theme_dark"
+            android:textSize="15sp"
+            android:paddingVertical="6dp" />
+    </RadioGroup>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/divider"
+        android:layout_marginBottom="20dp" />
+
+    <!-- Language section -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/settings_language"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_hint"
+        android:letterSpacing="0.08"
+        android:layout_marginBottom="4dp" />
+
+    <RadioGroup
+        android:id="@+id/rgLanguage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <RadioButton
+            android:id="@+id/rbLangTh"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_language_thai"
+            android:textSize="15sp"
+            android:paddingVertical="6dp" />
+
+        <RadioButton
+            android:id="@+id/rbLangEn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_language_english"
+            android:textSize="15sp"
+            android:paddingVertical="6dp" />
+    </RadioGroup>
+
+</LinearLayout>

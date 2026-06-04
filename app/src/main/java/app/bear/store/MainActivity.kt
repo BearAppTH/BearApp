@@ -1,5 +1,6 @@
 package app.bear.store
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -10,7 +11,6 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import app.bear.store.adapter.AppCardAdapter
 import app.bear.store.databinding.ActivityMainBinding
 import app.bear.store.databinding.DialogAboutBinding
+import app.bear.store.databinding.DialogSettingsBinding
 import app.bear.store.model.AppItem
 import app.bear.store.model.SelfUpdateState
 import app.bear.store.viewmodel.MainViewModel
@@ -48,6 +49,15 @@ class MainActivity : AppCompatActivity() {
         viewModel.refreshInstallStates()
     }
 
+    // ─── Locale ──────────────────────────────────────────────────────────────
+
+    override fun attachBaseContext(newBase: Context) {
+        val lang = PrefsManager(newBase).language
+        super.attachBaseContext(LocaleHelper.applyLocale(newBase, lang))
+    }
+
+    // ─── Lifecycle ───────────────────────────────────────────────────────────
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -66,19 +76,22 @@ class MainActivity : AppCompatActivity() {
         viewModel.refreshInstallStates()
     }
 
+    // ─── Setup ───────────────────────────────────────────────────────────────
+
     private fun setupToolbar() {
         binding.toolbar.setOnMenuItemClickListener { item ->
             when (item.itemId) {
-                R.id.menu_about -> { showAboutDialog(); true }
-                else -> false
+                R.id.menu_about    -> { showAboutDialog(); true }
+                R.id.menu_settings -> { showSettingsDialog(); true }
+                else               -> false
             }
         }
     }
 
     private fun setupRecyclerView() {
         adapter = AppCardAdapter(
-            onDownload = { app -> checkPermissionAndDownload(app) },
-            onInstall  = { app -> installApk(app) },
+            onDownload  = { app -> checkPermissionAndDownload(app) },
+            onInstall   = { app -> installApk(app) },
             onUninstall = { app -> uninstallApp(app) }
         )
         binding.rvApps.layoutManager = LinearLayoutManager(this)
@@ -88,7 +101,7 @@ class MainActivity : AppCompatActivity() {
     private fun observeViewModel() {
         viewModel.apps.observe(this) { apps ->
             adapter.setApps(apps)
-            binding.tvAppCount.text = "${apps.size} แอป"
+            binding.tvAppCount.text = getString(R.string.app_count_format, apps.size)
         }
 
         viewModel.isLoading.observe(this) { loading ->
@@ -117,18 +130,12 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Auto-install immediately when app download finishes
         lifecycleScope.launch {
-            viewModel.autoInstallTrigger.collect { app ->
-                installApk(app)
-            }
+            viewModel.autoInstallTrigger.collect { app -> installApk(app) }
         }
 
-        // Auto-install Bear Store self-update when download finishes
         lifecycleScope.launch {
-            viewModel.selfUpdateInstallTrigger.collect { file ->
-                installApkFromFile(file)
-            }
+            viewModel.selfUpdateInstallTrigger.collect { file -> installApkFromFile(file) }
         }
     }
 
@@ -137,23 +144,68 @@ class MainActivity : AppCompatActivity() {
         binding.btnRetry.setOnClickListener { viewModel.fetchApps() }
     }
 
+    // ─── Settings dialog ─────────────────────────────────────────────────────
+
+    private fun showSettingsDialog() {
+        val prefs = PrefsManager(this)
+        val b = DialogSettingsBinding.inflate(LayoutInflater.from(this))
+
+        when (prefs.themeMode) {
+            PrefsManager.THEME_LIGHT -> b.rbThemeLight.isChecked = true
+            PrefsManager.THEME_DARK  -> b.rbThemeDark.isChecked = true
+            else                     -> b.rbThemeSystem.isChecked = true
+        }
+        if (prefs.language == PrefsManager.LANG_EN) b.rbLangEn.isChecked = true
+        else b.rbLangTh.isChecked = true
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.settings_title)
+            .setView(b.root)
+            .setPositiveButton(R.string.btn_close, null)
+            .create()
+
+        dialog.show()
+
+        b.rgTheme.setOnCheckedChangeListener { _, checkedId ->
+            val newTheme = when (checkedId) {
+                R.id.rbThemeLight -> PrefsManager.THEME_LIGHT
+                R.id.rbThemeDark  -> PrefsManager.THEME_DARK
+                else              -> PrefsManager.THEME_SYSTEM
+            }
+            if (newTheme != prefs.themeMode) {
+                prefs.themeMode = newTheme
+                prefs.applyTheme()
+            }
+        }
+
+        b.rgLanguage.setOnCheckedChangeListener { _, checkedId ->
+            val newLang = if (checkedId == R.id.rbLangEn) PrefsManager.LANG_EN else PrefsManager.LANG_TH
+            if (newLang != prefs.language) {
+                prefs.language = newLang
+                dialog.dismiss()
+                recreate()
+            }
+        }
+    }
+
     // ─── About dialog ────────────────────────────────────────────────────────
 
     private fun showAboutDialog() {
         val dialogBinding = DialogAboutBinding.inflate(LayoutInflater.from(this))
-        dialogBinding.tvAboutVersion.text =
-            "เวอร์ชัน ${BuildConfig.VERSION_NAME}.${BuildConfig.VERSION_CODE}"
+        dialogBinding.tvAboutVersion.text = getString(
+            R.string.about_version_format, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE
+        )
 
         val dialog = MaterialAlertDialogBuilder(this)
             .setView(dialogBinding.root)
-            .setNegativeButton("ปิด", null)
+            .setNegativeButton(R.string.btn_close, null)
             .create()
 
         viewModel.checkSelfUpdate()
 
         viewModel.selfUpdateState.observe(this) { state ->
             if (!dialog.isShowing && state !is SelfUpdateState.Downloading) return@observe
-            updateAboutDialogState(dialogBinding, state) { tagName, downloadUrl ->
+            updateAboutDialogState(dialogBinding, state) { _, downloadUrl ->
                 dialog.dismiss()
                 startSelfUpdate(downloadUrl)
             }
@@ -169,48 +221,48 @@ class MainActivity : AppCompatActivity() {
     ) {
         when (state) {
             is SelfUpdateState.Checking -> {
-                b.tvUpdateStatus.text = "กำลังตรวจสอบอัปเดต..."
+                b.tvUpdateStatus.text = getString(R.string.about_checking_update)
                 b.progressSelfUpdate.isIndeterminate = true
                 b.progressSelfUpdate.visibility = View.VISIBLE
                 b.tvDownloadProgress.visibility = View.GONE
                 b.btnSelfUpdate.visibility = View.GONE
             }
             is SelfUpdateState.UpToDate -> {
-                b.tvUpdateStatus.text = "✓ คุณใช้เวอร์ชันล่าสุดแล้ว"
+                b.tvUpdateStatus.text = getString(R.string.about_up_to_date)
                 b.progressSelfUpdate.visibility = View.GONE
                 b.tvDownloadProgress.visibility = View.GONE
                 b.btnSelfUpdate.visibility = View.GONE
             }
             is SelfUpdateState.UpdateAvailable -> {
-                b.tvUpdateStatus.text = "มีเวอร์ชันใหม่ ${state.tagName}"
+                b.tvUpdateStatus.text = getString(R.string.about_update_available, state.tagName)
                 b.progressSelfUpdate.visibility = View.GONE
                 b.tvDownloadProgress.visibility = View.GONE
                 b.btnSelfUpdate.visibility = View.VISIBLE
-                b.btnSelfUpdate.text = "อัปเดตเดี๋ยวนี้"
+                b.btnSelfUpdate.text = getString(R.string.btn_update_now)
                 b.btnSelfUpdate.isEnabled = true
                 b.btnSelfUpdate.setOnClickListener {
                     onUpdateClick(state.tagName, state.downloadUrl)
                 }
             }
             is SelfUpdateState.Downloading -> {
-                b.tvUpdateStatus.text = "กำลังดาวน์โหลดอัปเดต..."
+                b.tvUpdateStatus.text = getString(R.string.about_downloading_update)
                 b.progressSelfUpdate.isIndeterminate = false
                 b.progressSelfUpdate.progress = state.progress
                 b.progressSelfUpdate.visibility = View.VISIBLE
                 b.tvDownloadProgress.text = "${state.progress}%"
                 b.tvDownloadProgress.visibility = View.VISIBLE
                 b.btnSelfUpdate.visibility = View.VISIBLE
-                b.btnSelfUpdate.text = "กำลังดาวน์โหลด... ${state.progress}%"
+                b.btnSelfUpdate.text = getString(R.string.about_downloading_progress, state.progress)
                 b.btnSelfUpdate.isEnabled = false
             }
             is SelfUpdateState.ReadyToInstall -> {
-                b.tvUpdateStatus.text = "ดาวน์โหลดเสร็จ — กำลังเปิดการติดตั้ง..."
+                b.tvUpdateStatus.text = getString(R.string.about_ready_to_install)
                 b.progressSelfUpdate.visibility = View.GONE
                 b.tvDownloadProgress.visibility = View.GONE
                 b.btnSelfUpdate.visibility = View.GONE
             }
             is SelfUpdateState.Error -> {
-                b.tvUpdateStatus.text = "ตรวจสอบไม่ได้: ${state.msg}"
+                b.tvUpdateStatus.text = getString(R.string.about_update_error, state.msg)
                 b.progressSelfUpdate.visibility = View.GONE
                 b.tvDownloadProgress.visibility = View.GONE
                 b.btnSelfUpdate.visibility = View.GONE
@@ -221,7 +273,7 @@ class MainActivity : AppCompatActivity() {
     private fun startSelfUpdate(downloadUrl: String) {
         val destFile = File(getExternalFilesDir(null), "bear-store-update.apk")
         viewModel.startSelfUpdate(downloadUrl, destFile)
-        Toast.makeText(this, "กำลังดาวน์โหลด Bear Store เวอร์ชันใหม่...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, R.string.toast_self_update_start, Toast.LENGTH_SHORT).show()
     }
 
     // ─── Download / Install / Uninstall ──────────────────────────────────────
@@ -260,7 +312,7 @@ class MainActivity : AppCompatActivity() {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
             })
         } catch (e: Exception) {
-            Toast.makeText(this, "ไม่สามารถติดตั้งได้", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.toast_install_failed, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -274,7 +326,7 @@ class MainActivity : AppCompatActivity() {
                 }
             )
         } catch (e: Exception) {
-            Toast.makeText(this, "ไม่สามารถถอนการติดตั้งได้", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.toast_uninstall_failed, Toast.LENGTH_SHORT).show()
         }
     }
 }

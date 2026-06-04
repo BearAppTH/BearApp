@@ -17,17 +17,17 @@
     <path
         android:fillColor="#FFFFFF"
         android:pathData="M 50,16 A 38,38 0 1,1 50,92 A 38,38 0 1,1 50,16 Z"/>
-    <!-- Left eye (negative space — matches toolbar background) -->
+    <!-- Left eye (dark — visible on the white face against any toolbar) -->
     <path
-        android:fillColor="#5C3D2E"
+        android:fillColor="#1A0C00"
         android:pathData="M 37,39 A 7,7 0 1,1 37,53 A 7,7 0 1,1 37,39 Z"/>
     <!-- Right eye -->
     <path
-        android:fillColor="#5C3D2E"
+        android:fillColor="#1A0C00"
         android:pathData="M 63,39 A 7,7 0 1,1 63,53 A 7,7 0 1,1 63,39 Z"/>
     <!-- Nose -->
     <path
-        android:fillColor="#5C3D2E"
+        android:fillColor="#1A0C00"
         android:pathData="M 43,62 A 7,4.5 0 1,1 57,62 A 7,4.5 0 1,1 43,62 Z"/>
 
 </vector>

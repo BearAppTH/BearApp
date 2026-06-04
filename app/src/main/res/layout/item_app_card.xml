@@ -101,7 +101,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="กำลังดาวน์โหลด..."
+                    android:text="@string/status_downloading_label"
                     android:textSize="12sp"
                     android:textColor="@color/text_secondary" />
 
@@ -129,7 +129,7 @@
             android:id="@+id/btnInstall"
             android:layout_width="match_parent"
             android:layout_height="44dp"
-            android:text="ติดตั้ง"
+            android:text="@string/btn_install"
             android:textSize="13sp"
             app:backgroundTint="@color/success"
             app:cornerRadius="22dp"
@@ -149,7 +149,7 @@
                 android:layout_width="0dp"
                 android:layout_height="44dp"
                 android:layout_weight="1"
-                android:text="ดาวน์โหลด"
+                android:text="@string/btn_download"
                 android:textSize="13sp"
                 app:backgroundTint="@color/primary"
                 app:cornerRadius="22dp" />
@@ -161,7 +161,7 @@
                 android:layout_height="44dp"
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
-                android:text="ถอนการติดตั้ง"
+                android:text="@string/btn_uninstall"
                 android:textSize="13sp"
                 android:textColor="@color/error"
                 app:strokeColor="@color/error"

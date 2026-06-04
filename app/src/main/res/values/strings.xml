@@ -2,13 +2,74 @@
 <resources>
     <string name="app_name">Bear Store</string>
     <string name="app_display_name">Bear Store</string>
+    <string name="app_subtitle">แอปสำหรับผู้ใช้หมี</string>
+    <string name="app_description">แอปสำหรับดาวน์โหลดและจัดการแอป Bear</string>
+    <string name="app_count_format">%d แอป</string>
 
-    <string name="btn_download">ดาวน์โหลดแอป</string>
-    <string name="btn_install">ติดตั้งทันที</string>
-    <string name="btn_retry">ลองใหม่อีกครั้ง</string>
+    <!-- Actions -->
+    <string name="action_refresh">รีเฟรช</string>
+    <string name="section_all_apps">แอปทั้งหมด</string>
 
+    <!-- Buttons -->
+    <string name="btn_download">ดาวน์โหลด</string>
+    <string name="btn_update">อัปเดต</string>
+    <string name="btn_install">ติดตั้ง</string>
+    <string name="btn_install_update">ติดตั้ง / อัปเดต</string>
+    <string name="btn_uninstall">ถอนการติดตั้ง</string>
+    <string name="btn_retry">ลองใหม่</string>
+    <string name="btn_close">ปิด</string>
+    <string name="btn_update_now">อัปเดตเดี๋ยวนี้</string>
+    <string name="url_unavailable">ยังไม่ระบุ</string>
+
+    <!-- Version info -->
+    <string name="version_format">เวอร์ชัน %s</string>
+    <string name="version_unspecified">ยังไม่ระบุเวอร์ชัน</string>
+    <string name="version_new">ใหม่: %s</string>
+    <string name="version_installed">ติดตั้งอยู่: %s</string>
+    <string name="version_installed_check">✓ ติดตั้งอยู่: %s</string>
+    <string name="updated_at_format">อัปเดต: %s</string>
+    <string name="about_version_format">เวอร์ชัน %s.%d</string>
+
+    <!-- Status -->
+    <string name="status_downloading_label">กำลังดาวน์โหลด…</string>
     <string name="status_checking">กำลังตรวจสอบเวอร์ชันล่าสุด…</string>
     <string name="status_downloading">กำลังดาวน์โหลด</string>
     <string name="status_complete">ดาวน์โหลดเสร็จสิ้น</string>
     <string name="status_error">เกิดข้อผิดพลาด</string>
+
+    <!-- About dialog -->
+    <string name="about_update_section">อัปเดตแอป</string>
+    <string name="about_checking_update">กำลังตรวจสอบอัปเดต…</string>
+    <string name="about_up_to_date">✓ คุณใช้เวอร์ชันล่าสุดแล้ว</string>
+    <string name="about_update_available">มีเวอร์ชันใหม่ %s</string>
+    <string name="about_downloading_update">กำลังดาวน์โหลดอัปเดต…</string>
+    <string name="about_downloading_progress">กำลังดาวน์โหลด… %d%%</string>
+    <string name="about_ready_to_install">ดาวน์โหลดเสร็จ — กำลังเปิดการติดตั้ง…</string>
+    <string name="about_update_error">ตรวจสอบไม่ได้: %s</string>
+
+    <!-- Toasts -->
+    <string name="toast_self_update_start">กำลังดาวน์โหลด Bear Store เวอร์ชันใหม่…</string>
+    <string name="toast_install_failed">ไม่สามารถติดตั้งได้</string>
+    <string name="toast_uninstall_failed">ไม่สามารถถอนการติดตั้งได้</string>
+
+    <!-- Errors -->
+    <string name="error_unknown">เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ</string>
+    <string name="error_no_data">ไม่ได้รับข้อมูล</string>
+    <string name="error_check_failed">ตรวจสอบไม่ได้</string>
+    <string name="error_download_cancelled">ยกเลิกการดาวน์โหลด</string>
+    <string name="error_download_failed">ดาวน์โหลดไม่ได้</string>
+
+    <!-- Menu -->
+    <string name="menu_about">เกี่ยวกับแอป</string>
+    <string name="menu_settings">การตั้งค่า</string>
+
+    <!-- Settings dialog -->
+    <string name="settings_title">การตั้งค่า</string>
+    <string name="settings_theme">ธีม</string>
+    <string name="settings_theme_system">ตามระบบ</string>
+    <string name="settings_theme_light">สว่าง</string>
+    <string name="settings_theme_dark">มืด</string>
+    <string name="settings_language">ภาษา</string>
+    <string name="settings_language_thai">ไทย</string>
+    <string name="settings_language_english">English</string>
 </resources>
