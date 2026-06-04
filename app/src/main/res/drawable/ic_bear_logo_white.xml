@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Left ear -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 25,9 A 13,13 0 1,1 25,35 A 13,13 0 1,1 25,9 Z"/>
+    <!-- Right ear -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 75,9 A 13,13 0 1,1 75,35 A 13,13 0 1,1 75,9 Z"/>
+    <!-- Head -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 50,16 A 38,38 0 1,1 50,92 A 38,38 0 1,1 50,16 Z"/>
+    <!-- Left eye (negative space — matches toolbar background) -->
+    <path
+        android:fillColor="#5C3D2E"
+        android:pathData="M 37,39 A 7,7 0 1,1 37,53 A 7,7 0 1,1 37,39 Z"/>
+    <!-- Right eye -->
+    <path
+        android:fillColor="#5C3D2E"
+        android:pathData="M 63,39 A 7,7 0 1,1 63,53 A 7,7 0 1,1 63,39 Z"/>
+    <!-- Nose -->
+    <path
+        android:fillColor="#5C3D2E"
+        android:pathData="M 43,62 A 7,4.5 0 1,1 57,62 A 7,4.5 0 1,1 43,62 Z"/>
+
+</vector>
