@@ -130,9 +130,8 @@ jobs:
 
           NEW_VERSION="${NEW_MAJOR}.${NEW_MINOR}.${NEW_PATCH}"
           NEW_TAG="v${NEW_VERSION}"
-          # versionCode = total number of releases + 1 (monotonically increasing)
-          NEW_CODE=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | wc -l)
-          NEW_CODE=$((NEW_CODE + 1))
+          # versionCode = github.run_number (always increasing, never downgrades)
+          NEW_CODE=${{ github.run_number }}
 
           echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_OUTPUT
           echo "NEW_TAG=${NEW_TAG}"         >> $GITHUB_OUTPUT
