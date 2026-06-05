@@ -209,8 +209,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             downloaded += n
                             if (total > 0) {
                                 val pct = ((downloaded * 100) / total).toInt()
-                                updateDownloadState(app.id, CardDownloadState.DOWNLOADING, pct, downloadedBytes = downloaded, totalBytes = total)
                                 if (pct != lastPct) {
+                                    updateDownloadState(app.id, CardDownloadState.DOWNLOADING, pct, downloadedBytes = downloaded, totalBytes = total)
                                     postDownloadNotification(app.name, notifId, pct, total)
                                     lastPct = pct
                                 }
@@ -302,8 +302,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             downloaded += n
                             if (total > 0) {
                                 val pct = ((downloaded * 100) / total).toInt()
-                                _selfUpdateState.postValue(SelfUpdateState.Downloading(pct))
                                 if (pct != lastPct) {
+                                    _selfUpdateState.postValue(SelfUpdateState.Downloading(pct))
                                     postDownloadNotification(appName, SELF_UPDATE_NOTIF_ID, pct, total)
                                     lastPct = pct
                                 }
