@@ -278,31 +278,27 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton(R.string.btn_close, null)
             .create()
 
-        // Don't re-check if a download is already in progress
         when (viewModel.selfUpdateState.value) {
             is SelfUpdateState.Downloading, is SelfUpdateState.ReadyToInstall -> Unit
             else -> viewModel.checkSelfUpdate()
         }
 
+        fun render(state: SelfUpdateState) = updateAboutDialogState(
+            b = dialogBinding,
+            state = state,
+            onCancelClick = { viewModel.cancelSelfUpdate(); dialog.dismiss() },
+            onUpdateClick = { _, downloadUrl -> dialog.dismiss(); startSelfUpdate(downloadUrl) }
+        )
+
         val updateObserver = Observer<SelfUpdateState> { state ->
-            if (!dialog.isShowing && state !is SelfUpdateState.Downloading) return@Observer
-            updateAboutDialogState(
-                b = dialogBinding,
-                state = state,
-                onCancelClick = {
-                    viewModel.cancelSelfUpdate()
-                    dialog.dismiss()
-                },
-                onUpdateClick = { _, downloadUrl ->
-                    dialog.dismiss()
-                    startSelfUpdate(downloadUrl)
-                }
-            )
+            if (dialog.isShowing) render(state)
         }
         viewModel.selfUpdateState.observe(this, updateObserver)
         dialog.setOnDismissListener { viewModel.selfUpdateState.removeObserver(updateObserver) }
 
         dialog.show()
+        // Observer fires before show(), so manually initialize the dialog with current state
+        viewModel.selfUpdateState.value?.let { render(it) }
     }
 
     private fun updateAboutDialogState(
