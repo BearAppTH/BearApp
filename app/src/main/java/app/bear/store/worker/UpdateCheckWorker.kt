@@ -46,27 +46,33 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineW
                     VersionUtils.isVersionNewer(app.version, info.versionName ?: "")
                 } catch (_: PackageManager.NameNotFoundException) { false }
             }
-            if (updates.isNotEmpty()) showUpdateNotification(updates.size)
+            if (updates.isNotEmpty()) showUpdateNotification(updates.map { it.name })
             Result.success()
         } catch (_: Exception) { Result.retry() }
     }
 
-    private fun showUpdateNotification(count: Int) {
-        val intent = Intent(applicationContext, MainActivity::class.java).apply {
+    private fun showUpdateNotification(names: List<String>) {
+        val ctx = applicationContext
+        val contentText = if (names.size <= 2) {
+            ctx.getString(R.string.notif_updates_named, names.joinToString(", "))
+        } else {
+            ctx.getString(R.string.notif_updates_message, names.size)
+        }
+        val intent = Intent(ctx, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
         val pendingIntent = PendingIntent.getActivity(
-            applicationContext, 0, intent,
+            ctx, 0, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(ctx, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_bear_logo)
-            .setContentTitle(applicationContext.getString(R.string.notif_updates_title))
-            .setContentText(applicationContext.getString(R.string.notif_updates_message, count))
+            .setContentTitle(ctx.getString(R.string.notif_updates_title))
+            .setContentText(contentText)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
-        val nm = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(NOTIFICATION_ID, notification)
     }
 

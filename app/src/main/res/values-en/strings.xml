@@ -100,6 +100,7 @@
     <string name="notif_channel_desc">Notifies when updates are available for installed apps</string>
     <string name="notif_updates_title">Updates available</string>
     <string name="notif_updates_message">%d app(s) have updates</string>
+    <string name="notif_updates_named">%s has updates available</string>
 
     <!-- Menu -->
     <string name="menu_about">About</string>

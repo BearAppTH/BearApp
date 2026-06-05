@@ -45,6 +45,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: AppCardAdapter
 
     private val downloadedFiles = mutableMapOf<String, File>()
+    private val pendingApkCleanup = mutableSetOf<String>()
     private var pendingDownloadApp: AppItem? = null
 
     private val installPermissionLauncher = registerForActivityResult(
@@ -90,6 +91,8 @@ class MainActivity : AppCompatActivity() {
         // Skip re-fetch on theme/language recreate to avoid state flash
         if (viewModel.apps.value.isNullOrEmpty()) {
             viewModel.fetchApps()
+        } else {
+            binding.shimmerLayout.visibility = View.GONE
         }
     }
 
@@ -171,6 +174,11 @@ class MainActivity : AppCompatActivity() {
         viewModel.installStates.observe(this) { states ->
             states.forEach { (appId, pair) ->
                 adapter.updateInstallState(appId, pair.first, pair.second)
+                // Clean up APK after successful install
+                if (appId in pendingApkCleanup && pair.first != InstallState.NOT_INSTALLED) {
+                    downloadedFiles.remove(appId)?.delete()
+                    pendingApkCleanup.remove(appId)
+                }
             }
             val updateCount = states.values.count { it.first == InstallState.UPDATE_AVAILABLE }
             if (updateCount >= 1) {
@@ -330,18 +338,26 @@ class MainActivity : AppCompatActivity() {
                 b.progressSelfUpdate.isIndeterminate = true
                 b.progressSelfUpdate.visibility = View.VISIBLE
                 b.tvDownloadProgress.visibility = View.GONE
+                b.tvUpdateChangelog.visibility = View.GONE
                 b.btnSelfUpdate.visibility = View.GONE
             }
             is SelfUpdateState.UpToDate -> {
                 b.tvUpdateStatus.text = getString(R.string.about_up_to_date)
                 b.progressSelfUpdate.visibility = View.GONE
                 b.tvDownloadProgress.visibility = View.GONE
+                b.tvUpdateChangelog.visibility = View.GONE
                 b.btnSelfUpdate.visibility = View.GONE
             }
             is SelfUpdateState.UpdateAvailable -> {
                 b.tvUpdateStatus.text = getString(R.string.about_update_available, state.tagName)
                 b.progressSelfUpdate.visibility = View.GONE
                 b.tvDownloadProgress.visibility = View.GONE
+                if (state.changelog.isNotBlank()) {
+                    b.tvUpdateChangelog.visibility = View.VISIBLE
+                    b.tvUpdateChangelog.text = state.changelog.trim()
+                } else {
+                    b.tvUpdateChangelog.visibility = View.GONE
+                }
                 b.btnSelfUpdate.visibility = View.VISIBLE
                 b.btnSelfUpdate.text = getString(R.string.btn_update_now)
                 b.btnSelfUpdate.isEnabled = true
@@ -356,6 +372,7 @@ class MainActivity : AppCompatActivity() {
                 b.progressSelfUpdate.visibility = View.VISIBLE
                 b.tvDownloadProgress.text = "${state.progress}%"
                 b.tvDownloadProgress.visibility = View.VISIBLE
+                b.tvUpdateChangelog.visibility = View.GONE
                 b.btnSelfUpdate.visibility = View.VISIBLE
                 b.btnSelfUpdate.text = getString(R.string.about_downloading_progress, state.progress)
                 b.btnSelfUpdate.isEnabled = true
@@ -365,6 +382,7 @@ class MainActivity : AppCompatActivity() {
                 b.tvUpdateStatus.text = getString(R.string.about_ready_to_install)
                 b.progressSelfUpdate.visibility = View.GONE
                 b.tvDownloadProgress.visibility = View.GONE
+                b.tvUpdateChangelog.visibility = View.GONE
                 val apkFile = File(getExternalFilesDir(null), "bear-store-update.apk")
                 if (apkFile.exists()) {
                     b.btnSelfUpdate.visibility = View.VISIBLE
@@ -379,6 +397,7 @@ class MainActivity : AppCompatActivity() {
                 b.tvUpdateStatus.text = getString(R.string.about_update_error, state.msg)
                 b.progressSelfUpdate.visibility = View.GONE
                 b.tvDownloadProgress.visibility = View.GONE
+                b.tvUpdateChangelog.visibility = View.GONE
                 b.btnSelfUpdate.visibility = View.GONE
             }
         }
@@ -431,6 +450,7 @@ class MainActivity : AppCompatActivity() {
     private fun installApk(app: AppItem) {
         val file = downloadedFiles[app.id] ?: return
         installApkFromFile(file)
+        pendingApkCleanup.add(app.id)
     }
 
     private fun installApkFromFile(file: File) {

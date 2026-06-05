@@ -234,7 +234,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val currentVersion = BuildConfig.VERSION_NAME
                 if (VersionUtils.isVersionNewer(latestVersion, currentVersion) && release.apkUrl != null) {
                     _selfUpdateState.postValue(
-                        SelfUpdateState.UpdateAvailable(release.tagName, release.apkUrl)
+                        SelfUpdateState.UpdateAvailable(release.tagName, release.apkUrl, release.body)
                     )
                 } else {
                     _selfUpdateState.postValue(SelfUpdateState.UpToDate)
