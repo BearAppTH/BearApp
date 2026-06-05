@@ -11,8 +11,8 @@ android {
         applicationId "app.bear.store"
         minSdk 29
         targetSdk 36
-        versionCode 63
-        versionName "1.1.7"
+        versionCode 64
+        versionName "1.1.8"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
