@@ -191,7 +191,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val release = apiService.getLatestRelease(GITHUB_OWNER, GITHUB_REPO)
                 val latestVersion = release.tagName.trimStart('v', 'V')
-                if (isVersionNewer(latestVersion, BuildConfig.VERSION_NAME) && release.apkUrl != null) {
+                val currentVersion = "${BuildConfig.VERSION_NAME}.${BuildConfig.VERSION_CODE}"
+                if (isVersionNewer(latestVersion, currentVersion) && release.apkUrl != null) {
                     _selfUpdateState.postValue(
                         SelfUpdateState.UpdateAvailable(release.tagName, release.apkUrl)
                     )
