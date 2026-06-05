@@ -64,6 +64,10 @@
     <string name="dialog_uninstall_title">ถอนการติดตั้ง</string>
     <string name="dialog_uninstall_message">ต้องการถอนการติดตั้ง %s ใช่ไหม?</string>
 
+    <!-- Language change confirmation -->
+    <string name="dialog_lang_change_title">เปลี่ยนภาษา</string>
+    <string name="dialog_lang_change_message">แอปจะรีสตาร์ทเพื่อเปลี่ยนภาษา ต้องการดำเนินการต่อหรือไม่?</string>
+
     <!-- Open app -->
     <string name="toast_open_failed">ไม่สามารถเปิดแอปได้</string>
 

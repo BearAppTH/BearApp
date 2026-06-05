@@ -173,7 +173,7 @@ class MainActivity : AppCompatActivity() {
                 adapter.updateInstallState(appId, pair.first, pair.second)
             }
             val updateCount = states.values.count { it.first == InstallState.UPDATE_AVAILABLE }
-            if (updateCount >= 2) {
+            if (updateCount >= 1) {
                 binding.btnUpdateAll.text = getString(R.string.btn_update_all, updateCount)
                 binding.btnUpdateAll.visibility = View.VISIBLE
             } else {
@@ -258,12 +258,26 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        var suppressLangListener = false
         b.rgLanguage.setOnCheckedChangeListener { _, checkedId ->
+            if (suppressLangListener) return@setOnCheckedChangeListener
             val newLang = if (checkedId == R.id.rbLangEn) PrefsManager.LANG_EN else PrefsManager.LANG_TH
             if (newLang != prefs.language) {
-                prefs.language = newLang
-                dialog.dismiss()
-                recreate()
+                MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.dialog_lang_change_title)
+                    .setMessage(R.string.dialog_lang_change_message)
+                    .setPositiveButton(R.string.btn_confirm) { _, _ ->
+                        prefs.language = newLang
+                        dialog.dismiss()
+                        recreate()
+                    }
+                    .setNegativeButton(R.string.btn_cancel) { _, _ ->
+                        suppressLangListener = true
+                        if (prefs.language == PrefsManager.LANG_EN) b.rbLangEn.isChecked = true
+                        else b.rbLangTh.isChecked = true
+                        suppressLangListener = false
+                    }
+                    .show()
             }
         }
     }

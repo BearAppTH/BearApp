@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import app.bear.store.util.VersionUtils
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
@@ -72,7 +73,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         const val GITHUB_OWNER = "bearappth"
         const val GITHUB_REPO = "bearapp"
         private const val CACHE_FILE = "apps_cache.json"
+        private const val CACHE_VERSION = 2
+        private const val CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000L
     }
+
+    private data class AppsCacheEnvelope(val v: Int, val savedAt: Long, val apps: List<AppItem>)
 
     private fun str(id: Int) = getApplication<Application>().getString(id)
 
@@ -145,7 +150,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val (isInstalled, installedVersion) = getInstalledInfo(pm, app.packageName)
             val installState = when {
                 !isInstalled -> InstallState.NOT_INSTALLED
-                isVersionNewer(app.version, installedVersion ?: "") -> InstallState.UPDATE_AVAILABLE
+                VersionUtils.isVersionNewer(app.version, installedVersion ?: "") -> InstallState.UPDATE_AVAILABLE
                 else -> InstallState.INSTALLED_UP_TO_DATE
             }
             app.id to Pair(installState, installedVersion)
@@ -209,7 +214,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: Exception) {
                 call.cancel()
                 destFile.delete()
-                updateDownloadState(app.id, CardDownloadState.ERROR, 0, e.message)
+                updateDownloadState(app.id, CardDownloadState.ERROR, 0, e.message ?: str(R.string.error_download_failed))
             }
         }
     }
@@ -227,7 +232,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val release = apiService.getLatestRelease(GITHUB_OWNER, GITHUB_REPO)
                 val latestVersion = release.tagName.trimStart('v', 'V')
                 val currentVersion = BuildConfig.VERSION_NAME
-                if (isVersionNewer(latestVersion, currentVersion) && release.apkUrl != null) {
+                if (VersionUtils.isVersionNewer(latestVersion, currentVersion) && release.apkUrl != null) {
                     _selfUpdateState.postValue(
                         SelfUpdateState.UpdateAvailable(release.tagName, release.apkUrl)
                     )
@@ -313,8 +318,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun saveAppsCache(apps: List<AppItem>) {
         try {
+            val envelope = AppsCacheEnvelope(CACHE_VERSION, System.currentTimeMillis(), apps)
             File(getApplication<Application>().filesDir, CACHE_FILE)
-                .writeText(gson.toJson(apps))
+                .writeText(gson.toJson(envelope))
         } catch (_: Exception) {}
     }
 
@@ -322,23 +328,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return try {
             val file = File(getApplication<Application>().filesDir, CACHE_FILE)
             if (!file.exists()) return null
-            val type = object : TypeToken<List<AppItem>>() {}.type
-            gson.fromJson(file.readText(), type)
+            val envelope = gson.fromJson(file.readText(), AppsCacheEnvelope::class.java)
+            val age = System.currentTimeMillis() - envelope.savedAt
+            if (envelope.v != CACHE_VERSION || age > CACHE_MAX_AGE_MS) {
+                file.delete()
+                return null
+            }
+            envelope.apps
         } catch (_: Exception) { null }
-    }
-
-    private fun isVersionNewer(configVersion: String, installedVersion: String): Boolean {
-        if (configVersion.isBlank() || installedVersion.isBlank()) return false
-        val newParts = configVersion.split(".").mapNotNull { it.filter { c -> c.isDigit() }.toIntOrNull() }
-        val insParts = installedVersion.split(".").mapNotNull { it.filter { c -> c.isDigit() }.toIntOrNull() }
-        if (newParts.isEmpty() || insParts.isEmpty()) return false
-        for (i in 0 until maxOf(newParts.size, insParts.size)) {
-            val n = newParts.getOrElse(i) { 0 }
-            val ins = insParts.getOrElse(i) { 0 }
-            if (n > ins) return true
-            if (n < ins) return false
-        }
-        return false
     }
 
     private fun updateDownloadState(appId: String, state: CardDownloadState, progress: Int, error: String? = null) {

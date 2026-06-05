@@ -11,19 +11,39 @@ import androidx.work.WorkerParameters
 import app.bear.store.MainActivity
 import app.bear.store.R
 import app.bear.store.network.GitHubApiService
+import app.bear.store.util.VersionUtils
+import com.google.gson.JsonObject
 
 class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
         return try {
-            val config = GitHubApiService(applicationContext).getAppsConfig(GITHUB_OWNER, GITHUB_REPO)
+            val apiService = GitHubApiService(applicationContext)
+            val config = apiService.getAppsConfig(GITHUB_OWNER, GITHUB_REPO)
+            // Resolve actual versions from GitHub releases before comparing
+            val jsonCache = mutableMapOf<String, JsonObject>()
+            val apps = config.apps.map { app ->
+                if (!app.isGitHubManaged) return@map app
+                try {
+                    val key = "${app.githubOwner}/${app.githubRepo}"
+                    val releaseJson = jsonCache.getOrPut(key) {
+                        apiService.fetchRelease(app.githubOwner, app.githubRepo)
+                    }
+                    val release = if (app.githubFilePrefix.isNotBlank()) {
+                        apiService.parseAssetFromRelease(releaseJson, app.githubFilePrefix) ?: return@map app
+                    } else {
+                        apiService.parseRelease(releaseJson)
+                    }
+                    app.copy(version = release.tagName.trimStart('v', 'V'))
+                } catch (_: Exception) { app }
+            }
             val pm = applicationContext.packageManager
-            val updates = config.apps.filter { app ->
-                if (app.packageName.isBlank()) return@filter false
+            val updates = apps.filter { app ->
+                if (app.packageName.isBlank() || app.version.isBlank()) return@filter false
                 try {
                     @Suppress("DEPRECATION")
                     val info = pm.getPackageInfo(app.packageName, 0)
-                    isVersionNewer(app.version, info.versionName ?: "")
+                    VersionUtils.isVersionNewer(app.version, info.versionName ?: "")
                 } catch (_: PackageManager.NameNotFoundException) { false }
             }
             if (updates.isNotEmpty()) showUpdateNotification(updates.size)
@@ -48,20 +68,6 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineW
             .build()
         val nm = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(NOTIFICATION_ID, notification)
-    }
-
-    private fun isVersionNewer(configVersion: String, installedVersion: String): Boolean {
-        if (configVersion.isBlank() || installedVersion.isBlank()) return false
-        val newParts = configVersion.split(".").mapNotNull { it.filter { c -> c.isDigit() }.toIntOrNull() }
-        val insParts = installedVersion.split(".").mapNotNull { it.filter { c -> c.isDigit() }.toIntOrNull() }
-        if (newParts.isEmpty() || insParts.isEmpty()) return false
-        for (i in 0 until maxOf(newParts.size, insParts.size)) {
-            val n = newParts.getOrElse(i) { 0 }
-            val ins = insParts.getOrElse(i) { 0 }
-            if (n > ins) return true
-            if (n < ins) return false
-        }
-        return false
     }
 
     companion object {
