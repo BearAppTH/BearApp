@@ -273,7 +273,7 @@ class MainActivity : AppCompatActivity() {
     private fun showAboutDialog() {
         val dialogBinding = DialogAboutBinding.inflate(LayoutInflater.from(this))
         dialogBinding.tvAboutVersion.text = getString(
-            R.string.about_version_format, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE
+            R.string.about_version_format, BuildConfig.VERSION_NAME
         )
 
         val dialog = MaterialAlertDialogBuilder(this)

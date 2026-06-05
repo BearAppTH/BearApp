@@ -34,7 +34,7 @@
     <string name="version_installed">ติดตั้งอยู่: %s</string>
     <string name="version_installed_check">✓ ติดตั้งอยู่: %s</string>
     <string name="updated_at_format">อัปเดต: %s</string>
-    <string name="about_version_format">เวอร์ชัน %s.%d</string>
+    <string name="about_version_format">เวอร์ชัน %s</string>
 
     <!-- Status -->
     <string name="status_downloading_label">กำลังดาวน์โหลด…</string>
