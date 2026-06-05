@@ -101,6 +101,7 @@ class MainActivity : AppCompatActivity() {
             savedInstanceState?.getInt(KEY_CHIP_FILTER, 0) ?: 0
         ) { ChipFilter.ALL }
 
+        cleanupOrphanedApks()
         setupToolbar()
         setupRecyclerView()
         observeViewModel()
@@ -594,6 +595,14 @@ class MainActivity : AppCompatActivity() {
         } else {
             binding.btnUpdateAll.visibility = View.GONE
         }
+    }
+
+    private fun cleanupOrphanedApks() {
+        // Delete leftover partial APKs from downloads that were interrupted by process kill.
+        // bear-store-update.apk is excluded here; cleanupSelfUpdateApk() handles it in onResume.
+        getExternalFilesDir(null)?.listFiles { file ->
+            file.name.endsWith(".apk") && file.name != "bear-store-update.apk"
+        }?.forEach { it.delete() }
     }
 
     private fun cleanupSelfUpdateApk() {

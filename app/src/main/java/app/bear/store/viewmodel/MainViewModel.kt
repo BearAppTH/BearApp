@@ -7,6 +7,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.bear.store.util.VersionUtils
+import app.bear.store.PrefsManager
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
@@ -133,8 +134,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun toThaiDate(isoDate: String): String {
         val datePart = isoDate.take(10).split("-")
         if (datePart.size != 3) return ""
-        val thaiYear = datePart[0].toIntOrNull()?.plus(543) ?: return ""
-        return "$thaiYear-${datePart[1]}-${datePart[2]}"
+        val isThai = PrefsManager(getApplication()).language == PrefsManager.LANG_TH
+        val year = datePart[0].toIntOrNull()?.let { if (isThai) it + 543 else it } ?: return ""
+        return "$year-${datePart[1]}-${datePart[2]}"
     }
 
     fun refreshInstallStates() {
