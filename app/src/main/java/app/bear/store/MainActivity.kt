@@ -218,6 +218,7 @@ class MainActivity : AppCompatActivity() {
                 if (appId in pendingApkCleanup && pair.first != InstallState.NOT_INSTALLED) {
                     downloadedFiles.remove(appId)?.delete()
                     pendingApkCleanup.remove(appId)
+                    viewModel.clearDownloadState(appId)
                 }
             }
             updateUpdateAllButton()

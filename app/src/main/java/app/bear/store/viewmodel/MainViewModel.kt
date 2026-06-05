@@ -79,6 +79,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         const val GITHUB_OWNER = "bearappth"
         const val GITHUB_REPO = "bearapp"
         const val DOWNLOAD_CHANNEL_ID = "bear_store_downloads"
+        private const val SELF_UPDATE_NOTIF_ID = 1002
         private const val CACHE_FILE = "apps_cache.json"
         private const val CACHE_VERSION = 2
         private const val CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000L
@@ -179,8 +180,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun startDownload(app: AppItem, destFile: File) {
         if (progressJobs[app.id]?.isActive == true) return
+        val notifId = app.id.hashCode()
         updateDownloadState(app.id, CardDownloadState.DOWNLOADING, 0)
-        postDownloadNotification(app.name, app.id, 0, 0L)
+        postDownloadNotification(app.name, notifId, 0, 0L)
         progressJobs[app.id] = viewModelScope.launch(Dispatchers.IO) {
             val call = downloadClient.newCall(Request.Builder().url(app.downloadUrl).build())
             try {
@@ -189,6 +191,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val body = response.body ?: throw Exception(str(R.string.error_no_data))
                 val total = body.contentLength()
                 var downloaded = 0L
+                var lastPct = -1
                 destFile.parentFile?.mkdirs()
                 if (total > 0) {
                     val statsPath = destFile.parentFile?.path
@@ -207,24 +210,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             if (total > 0) {
                                 val pct = ((downloaded * 100) / total).toInt()
                                 updateDownloadState(app.id, CardDownloadState.DOWNLOADING, pct, downloadedBytes = downloaded, totalBytes = total)
-                                postDownloadNotification(app.name, app.id, pct, total)
+                                if (pct != lastPct) {
+                                    postDownloadNotification(app.name, notifId, pct, total)
+                                    lastPct = pct
+                                }
                             }
                         }
                     }
                 }
                 if (isActive) {
-                    cancelDownloadNotification(app.id)
+                    cancelDownloadNotification(notifId)
                     updateDownloadState(app.id, CardDownloadState.COMPLETE, 100)
                     _autoInstallTrigger.emit(app)
                 } else {
                     destFile.delete()
-                    cancelDownloadNotification(app.id)
+                    cancelDownloadNotification(notifId)
                     updateDownloadState(app.id, CardDownloadState.IDLE, 0)
                 }
             } catch (e: Exception) {
                 call.cancel()
                 destFile.delete()
-                cancelDownloadNotification(app.id)
+                cancelDownloadNotification(notifId)
                 updateDownloadState(app.id, CardDownloadState.ERROR, 0, e.message ?: str(R.string.error_download_failed))
             }
         }
@@ -233,7 +239,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun cancelDownload(appId: String) {
         progressJobs[appId]?.cancel()
         progressJobs.remove(appId)
-        cancelDownloadNotification(appId)
+        cancelDownloadNotification(appId.hashCode())
         updateDownloadState(appId, CardDownloadState.IDLE, 0)
     }
 
@@ -262,11 +268,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun cancelSelfUpdate() {
         selfUpdateJob?.cancel()
         selfUpdateJob = null
+        cancelDownloadNotification(SELF_UPDATE_NOTIF_ID)
         _selfUpdateState.value = SelfUpdateState.Error(str(R.string.error_download_cancelled))
     }
 
     fun startSelfUpdate(downloadUrl: String, destFile: File) {
         _selfUpdateState.value = SelfUpdateState.Downloading(0)
+        val appName = str(R.string.app_display_name)
+        postDownloadNotification(appName, SELF_UPDATE_NOTIF_ID, 0, 0L)
         selfUpdateJob = viewModelScope.launch(Dispatchers.IO) {
             val call = downloadClient.newCall(Request.Builder().url(downloadUrl).build())
             try {
@@ -275,6 +284,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val body = response.body ?: throw Exception(str(R.string.error_no_data))
                 val total = body.contentLength()
                 var downloaded = 0L
+                var lastPct = -1
                 destFile.parentFile?.mkdirs()
                 if (total > 0) {
                     val statsPath = destFile.parentFile?.path
@@ -291,23 +301,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             out.write(buf, 0, n)
                             downloaded += n
                             if (total > 0) {
-                                _selfUpdateState.postValue(
-                                    SelfUpdateState.Downloading(((downloaded * 100) / total).toInt())
-                                )
+                                val pct = ((downloaded * 100) / total).toInt()
+                                _selfUpdateState.postValue(SelfUpdateState.Downloading(pct))
+                                if (pct != lastPct) {
+                                    postDownloadNotification(appName, SELF_UPDATE_NOTIF_ID, pct, total)
+                                    lastPct = pct
+                                }
                             }
                         }
                     }
                 }
                 if (isActive) {
+                    cancelDownloadNotification(SELF_UPDATE_NOTIF_ID)
                     _selfUpdateState.postValue(SelfUpdateState.ReadyToInstall)
                     _selfUpdateInstallTrigger.emit(destFile)
                 } else {
                     destFile.delete()
+                    cancelDownloadNotification(SELF_UPDATE_NOTIF_ID)
                     _selfUpdateState.postValue(SelfUpdateState.Error(str(R.string.error_download_cancelled)))
                 }
             } catch (e: Exception) {
                 call.cancel()
                 destFile.delete()
+                cancelDownloadNotification(SELF_UPDATE_NOTIF_ID)
                 _selfUpdateState.postValue(
                     SelfUpdateState.Error(e.message ?: str(R.string.error_download_failed))
                 )
@@ -330,22 +346,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    private fun postDownloadNotification(appName: String, appId: String, progress: Int, total: Long) {
+    fun clearDownloadState(appId: String) {
+        val current = _downloadStates.value.orEmpty().toMutableMap()
+        if (current[appId]?.state == CardDownloadState.COMPLETE) {
+            current[appId] = DownloadInfo(CardDownloadState.IDLE)
+            _downloadStates.postValue(current)
+        }
+    }
+
+    private fun postDownloadNotification(title: String, notifId: Int, progress: Int, total: Long) {
         val app = getApplication<Application>()
         val notification = NotificationCompat.Builder(app, DOWNLOAD_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_bear_logo)
-            .setContentTitle(appName)
+            .setContentTitle(title)
             .setContentText(app.getString(R.string.notif_downloading, progress))
             .setProgress(100, progress, total <= 0)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setSilent(true)
             .build()
-        notificationManager.notify(appId.hashCode(), notification)
+        notificationManager.notify(notifId, notification)
     }
 
-    private fun cancelDownloadNotification(appId: String) {
-        notificationManager.cancel(appId.hashCode())
+    private fun cancelDownloadNotification(notifId: Int) {
+        notificationManager.cancel(notifId)
     }
 
     private fun saveAppsCache(apps: List<AppItem>) {
@@ -378,7 +402,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
-        progressJobs.keys.forEach { cancelDownloadNotification(it) }
+        progressJobs.keys.forEach { cancelDownloadNotification(it.hashCode()) }
+        cancelDownloadNotification(SELF_UPDATE_NOTIF_ID)
         progressJobs.values.forEach { it.cancel() }
         selfUpdateJob?.cancel()
     }
