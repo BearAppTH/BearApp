@@ -131,7 +131,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        viewModel.resetCompletedDownloads()
+        viewModel.resetCompletedDownloads(downloadedFiles.keys.toSet())
         viewModel.refreshInstallStates()
         cleanupSelfUpdateApk()
     }

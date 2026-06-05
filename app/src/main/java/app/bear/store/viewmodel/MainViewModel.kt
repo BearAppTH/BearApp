@@ -7,10 +7,12 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.bear.store.util.VersionUtils
+import android.app.NotificationManager
+import android.content.Context
 import app.bear.store.PrefsManager
+import androidx.core.app.NotificationCompat
 import com.google.gson.Gson
 import com.google.gson.JsonObject
-import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -70,9 +72,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         .readTimeout(60, TimeUnit.SECONDS)
         .build()
 
+    private val notificationManager =
+        getApplication<Application>().getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
     companion object {
         const val GITHUB_OWNER = "bearappth"
         const val GITHUB_REPO = "bearapp"
+        const val DOWNLOAD_CHANNEL_ID = "bear_store_downloads"
         private const val CACHE_FILE = "apps_cache.json"
         private const val CACHE_VERSION = 2
         private const val CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000L
@@ -174,6 +180,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun startDownload(app: AppItem, destFile: File) {
         if (progressJobs[app.id]?.isActive == true) return
         updateDownloadState(app.id, CardDownloadState.DOWNLOADING, 0)
+        postDownloadNotification(app.name, app.id, 0, 0L)
         progressJobs[app.id] = viewModelScope.launch(Dispatchers.IO) {
             val call = downloadClient.newCall(Request.Builder().url(app.downloadUrl).build())
             try {
@@ -198,26 +205,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             out.write(buf, 0, n)
                             downloaded += n
                             if (total > 0) {
-                                updateDownloadState(
-                                    app.id, CardDownloadState.DOWNLOADING,
-                                    ((downloaded * 100) / total).toInt(),
-                                    downloadedBytes = downloaded,
-                                    totalBytes = total
-                                )
+                                val pct = ((downloaded * 100) / total).toInt()
+                                updateDownloadState(app.id, CardDownloadState.DOWNLOADING, pct, downloadedBytes = downloaded, totalBytes = total)
+                                postDownloadNotification(app.name, app.id, pct, total)
                             }
                         }
                     }
                 }
                 if (isActive) {
+                    cancelDownloadNotification(app.id)
                     updateDownloadState(app.id, CardDownloadState.COMPLETE, 100)
                     _autoInstallTrigger.emit(app)
                 } else {
                     destFile.delete()
+                    cancelDownloadNotification(app.id)
                     updateDownloadState(app.id, CardDownloadState.IDLE, 0)
                 }
             } catch (e: Exception) {
                 call.cancel()
                 destFile.delete()
+                cancelDownloadNotification(app.id)
                 updateDownloadState(app.id, CardDownloadState.ERROR, 0, e.message ?: str(R.string.error_download_failed))
             }
         }
@@ -226,6 +233,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun cancelDownload(appId: String) {
         progressJobs[appId]?.cancel()
         progressJobs.remove(appId)
+        cancelDownloadNotification(appId)
         updateDownloadState(appId, CardDownloadState.IDLE, 0)
     }
 
@@ -309,15 +317,35 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun getApp(appId: String): AppItem? = _apps.value?.find { it.id == appId }
 
-    fun resetCompletedDownloads() {
+    fun resetCompletedDownloads(keepIds: Set<String> = emptySet()) {
         val current = _downloadStates.value.orEmpty()
         val hasCompleted = current.values.any { it.state == CardDownloadState.COMPLETE }
         if (!hasCompleted) return
         _downloadStates.postValue(
-            current.mapValues { (_, v) ->
-                if (v.state == CardDownloadState.COMPLETE) DownloadInfo(CardDownloadState.IDLE) else v
+            current.mapValues { (id, v) ->
+                if (v.state == CardDownloadState.COMPLETE && id !in keepIds)
+                    DownloadInfo(CardDownloadState.IDLE)
+                else v
             }
         )
+    }
+
+    private fun postDownloadNotification(appName: String, appId: String, progress: Int, total: Long) {
+        val app = getApplication<Application>()
+        val notification = NotificationCompat.Builder(app, DOWNLOAD_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_bear_logo)
+            .setContentTitle(appName)
+            .setContentText(app.getString(R.string.notif_downloading, progress))
+            .setProgress(100, progress, total <= 0)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .build()
+        notificationManager.notify(appId.hashCode(), notification)
+    }
+
+    private fun cancelDownloadNotification(appId: String) {
+        notificationManager.cancel(appId.hashCode())
     }
 
     private fun saveAppsCache(apps: List<AppItem>) {
@@ -350,6 +378,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
+        progressJobs.keys.forEach { cancelDownloadNotification(it) }
         progressJobs.values.forEach { it.cancel() }
         selfUpdateJob?.cancel()
     }

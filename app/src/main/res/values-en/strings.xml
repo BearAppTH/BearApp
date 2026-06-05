@@ -98,6 +98,9 @@
     <!-- Notifications -->
     <string name="notif_channel_name">Bear Store</string>
     <string name="notif_channel_desc">Notifies when updates are available for installed apps</string>
+    <string name="notif_channel_download_name">Downloads</string>
+    <string name="notif_channel_download_desc">Shows app download progress</string>
+    <string name="notif_downloading">Downloading… %d%%</string>
     <string name="notif_updates_title">Updates available</string>
     <string name="notif_updates_message">%d app(s) have updates</string>
     <string name="notif_updates_named">%s has updates available</string>

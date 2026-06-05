@@ -98,6 +98,9 @@
     <!-- Notifications -->
     <string name="notif_channel_name">Bear Store</string>
     <string name="notif_channel_desc">แจ้งเตือนเมื่อมีอัปเดตสำหรับแอปที่ติดตั้ง</string>
+    <string name="notif_channel_download_name">การดาวน์โหลด</string>
+    <string name="notif_channel_download_desc">แสดงความคืบหน้าการดาวน์โหลดแอป</string>
+    <string name="notif_downloading">กำลังดาวน์โหลด… %d%%</string>
     <string name="notif_updates_title">มีอัปเดตใหม่</string>
     <string name="notif_updates_message">%d แอปมีอัปเดตใหม่</string>
     <string name="notif_updates_named">%s มีอัปเดตใหม่</string>

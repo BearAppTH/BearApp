@@ -69,6 +69,7 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineW
             .setSmallIcon(R.drawable.ic_bear_logo)
             .setContentTitle(ctx.getString(R.string.notif_updates_title))
             .setContentText(contentText)
+            .setNumber(names.size)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
