@@ -82,9 +82,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val config = apiService.getAppsConfig(GITHUB_OWNER, GITHUB_REPO)
-                saveAppsCache(config.apps)
-                _apps.postValue(config.apps)
-                checkAllInstallStates(config.apps)
+                val apps = resolveGitHubApps(config.apps)
+                saveAppsCache(apps)
+                _apps.postValue(apps)
+                checkAllInstallStates(apps)
             } catch (e: Exception) {
                 loadAppsCache()?.let { cached ->
                     _apps.postValue(cached)
@@ -95,6 +96,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _isLoading.postValue(false)
             }
         }
+    }
+
+    private fun resolveGitHubApps(apps: List<AppItem>): List<AppItem> = apps.map { app ->
+        if (!app.isGitHubManaged) return@map app
+        try {
+            val release = apiService.getLatestRelease(app.githubOwner, app.githubRepo)
+            app.copy(
+                version = release.tagName.trimStart('v', 'V'),
+                downloadUrl = release.apkUrl ?: app.downloadUrl,
+                updatedAt = toThaiDate(release.publishedAt).ifBlank { app.updatedAt },
+                changelog = release.body.ifBlank { app.changelog }
+            )
+        } catch (_: Exception) { app }
+    }
+
+    private fun toThaiDate(isoDate: String): String {
+        val datePart = isoDate.take(10).split("-")
+        if (datePart.size != 3) return ""
+        val thaiYear = datePart[0].toIntOrNull()?.plus(543) ?: return ""
+        return "$thaiYear-${datePart[1]}-${datePart[2]}"
     }
 
     fun refreshInstallStates() {

@@ -80,7 +80,9 @@ class GitHubApiService(private val context: Context) {
                 packageName = a.get("package_name")?.asString ?: "",
                 iconUrl = a.get("icon_url")?.asString ?: "",
                 description = a.get("description")?.asString ?: "",
-                changelog = a.get("changelog")?.asString ?: ""
+                changelog = a.get("changelog")?.asString ?: "",
+                githubOwner = a.get("github_owner")?.asString ?: "",
+                githubRepo = a.get("github_repo")?.asString ?: ""
             )
         }
         return AppsConfig(apps)

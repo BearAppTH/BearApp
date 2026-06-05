@@ -19,10 +19,9 @@
     {
       "id": "bear_microg",
       "name": "Bear MicroG",
-      "version": "3.5.3",
-      "updated_at": "2569-06-03",
-      "download_url": "https://github.com/BearAppTH/MicroG-RE/releases/download/v3.5.3/bear-microg-v3.5.3.apk",
-      "package_name": "app.bear.android.gms"
+      "package_name": "app.bear.android.gms",
+      "github_owner": "BearAppTH",
+      "github_repo": "MicroG-RE"
     }
   ]
 }
