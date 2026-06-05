@@ -63,11 +63,14 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           retention-days: 30
 
-  # Auto version bump, build, and release on every main push
+  # Auto version bump, build, and release on every main push or manual dispatch
   auto-release:
     name: Auto Version, Build & Release
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip ci]')
+    if: |
+      (github.ref == 'refs/heads/main') &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip ci]')))
     permissions:
       contents: write
 
