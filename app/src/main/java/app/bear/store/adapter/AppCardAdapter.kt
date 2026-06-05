@@ -105,6 +105,13 @@ class AppCardAdapter(
             ChipFilter.UPDATES -> filtered.filter { it.installState == InstallState.UPDATE_AVAILABLE }
             ChipFilter.INSTALLED -> filtered.filter { it.installState != InstallState.NOT_INSTALLED }
         }
+        filtered = filtered.sortedBy { s ->
+            when (s.installState) {
+                InstallState.UPDATE_AVAILABLE -> 0
+                InstallState.INSTALLED_UP_TO_DATE -> 1
+                InstallState.NOT_INSTALLED -> 2
+            }
+        }
         val diffResult = DiffUtil.calculateDiff(DiffCallback(items.toList(), filtered))
         items.clear()
         items.addAll(filtered)

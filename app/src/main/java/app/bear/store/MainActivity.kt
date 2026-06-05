@@ -101,14 +101,16 @@ class MainActivity : AppCompatActivity() {
             savedInstanceState?.getInt(KEY_CHIP_FILTER, 0) ?: 0
         ) { ChipFilter.ALL }
 
+        restoreDownloadedFiles()
         cleanupOrphanedApks()
         setupToolbar()
         setupRecyclerView()
         observeViewModel()
         setupListeners()
         requestNotificationPermission()
-        // Skip re-fetch on theme/language recreate to avoid state flash
-        if (viewModel.apps.value.isNullOrEmpty()) {
+        val savedLang = savedInstanceState?.getString(KEY_LANGUAGE)
+        val langChanged = savedLang != null && savedLang != PrefsManager(this).language
+        if (viewModel.apps.value.isNullOrEmpty() || langChanged) {
             viewModel.fetchApps()
         } else {
             binding.shimmerLayout.visibility = View.GONE
@@ -137,6 +139,7 @@ class MainActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putInt(KEY_CHIP_FILTER, currentChipFilter.ordinal)
+        outState.putString(KEY_LANGUAGE, PrefsManager(this).language)
     }
 
     // ─── Setup ───────────────────────────────────────────────────────────────
@@ -597,11 +600,24 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun restoreDownloadedFiles() {
+        val states = viewModel.downloadStates.value ?: return
+        val dir = getExternalFilesDir(null) ?: return
+        states.forEach { (appId, info) ->
+            if (info.state == CardDownloadState.DOWNLOADING || info.state == CardDownloadState.COMPLETE) {
+                val app = viewModel.getApp(appId) ?: return@forEach
+                val file = File(dir, "${appId}-${app.version.ifBlank { "latest" }}.apk")
+                if (file.exists()) downloadedFiles[appId] = file
+            }
+        }
+    }
+
     private fun cleanupOrphanedApks() {
-        // Delete leftover partial APKs from downloads that were interrupted by process kill.
-        // bear-store-update.apk is excluded here; cleanupSelfUpdateApk() handles it in onResume.
+        val trackedNames = downloadedFiles.values.map { it.name }.toSet()
         getExternalFilesDir(null)?.listFiles { file ->
-            file.name.endsWith(".apk") && file.name != "bear-store-update.apk"
+            file.name.endsWith(".apk") &&
+            file.name != "bear-store-update.apk" &&
+            file.name !in trackedNames
         }?.forEach { it.delete() }
     }
 
@@ -626,5 +642,6 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val KEY_CHIP_FILTER = "chip_filter"
+        private const val KEY_LANGUAGE = "language"
     }
 }
