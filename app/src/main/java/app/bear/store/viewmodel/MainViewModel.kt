@@ -198,7 +198,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             if (total > 0) {
                                 updateDownloadState(
                                     app.id, CardDownloadState.DOWNLOADING,
-                                    ((downloaded * 100) / total).toInt()
+                                    ((downloaded * 100) / total).toInt(),
+                                    downloadedBytes = downloaded,
+                                    totalBytes = total
                                 )
                             }
                         }
@@ -338,9 +340,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } catch (_: Exception) { null }
     }
 
-    private fun updateDownloadState(appId: String, state: CardDownloadState, progress: Int, error: String? = null) {
+    private fun updateDownloadState(appId: String, state: CardDownloadState, progress: Int, error: String? = null, downloadedBytes: Long = 0L, totalBytes: Long = 0L) {
         val current = _downloadStates.value.orEmpty().toMutableMap()
-        current[appId] = DownloadInfo(state, progress, error)
+        current[appId] = DownloadInfo(state, progress, error, downloadedBytes, totalBytes)
         _downloadStates.postValue(current)
     }
 

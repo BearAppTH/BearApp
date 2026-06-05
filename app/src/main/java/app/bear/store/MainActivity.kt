@@ -25,6 +25,7 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import app.bear.store.adapter.AppCardAdapter
+import app.bear.store.adapter.CardDownloadState
 import app.bear.store.adapter.ChipFilter
 import app.bear.store.databinding.ActivityMainBinding
 import app.bear.store.databinding.DialogAboutBinding
@@ -196,15 +197,14 @@ class MainActivity : AppCompatActivity() {
         }
 
         viewModel.isUsingCache.observe(this) { isCache ->
-            if (isCache) {
-                Snackbar.make(binding.root, R.string.toast_cached_data, Snackbar.LENGTH_LONG).show()
-            }
+            binding.tvOfflineBanner.visibility = if (isCache) View.VISIBLE else View.GONE
         }
 
         viewModel.downloadStates.observe(this) { states ->
             states.forEach { (appId, info) ->
-                adapter.updateState(appId, info.state, info.progress, info.error)
+                adapter.updateState(appId, info.state, info.progress, info.error, info.downloadedBytes, info.totalBytes)
             }
+            updateUpdateAllButton()
         }
 
         viewModel.installStates.observe(this) { states ->
@@ -216,13 +216,7 @@ class MainActivity : AppCompatActivity() {
                     pendingApkCleanup.remove(appId)
                 }
             }
-            val updateCount = states.values.count { it.first == InstallState.UPDATE_AVAILABLE }
-            if (updateCount >= 1) {
-                binding.btnUpdateAll.text = getString(R.string.btn_update_all, updateCount)
-                binding.btnUpdateAll.visibility = View.VISIBLE
-            } else {
-                binding.btnUpdateAll.visibility = View.GONE
-            }
+            updateUpdateAllButton()
         }
 
         lifecycleScope.launch {
@@ -248,6 +242,13 @@ class MainActivity : AppCompatActivity() {
                 binding.tvSearchEmpty.visibility = View.GONE
                 binding.rvApps.visibility = if (viewModel.errorMessage.value == null) View.VISIBLE else View.GONE
             }
+        }
+
+        // Sync chip group UI with the filter restored from savedInstanceState
+        when (currentChipFilter) {
+            ChipFilter.UPDATES -> binding.chipUpdates.isChecked = true
+            ChipFilter.INSTALLED -> binding.chipInstalled.isChecked = true
+            ChipFilter.ALL -> binding.chipAll.isChecked = true
         }
 
         binding.chipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
@@ -576,6 +577,23 @@ class MainActivity : AppCompatActivity() {
             .setView(b.root)
             .setPositiveButton(R.string.btn_close, null)
             .show()
+    }
+
+    private fun updateUpdateAllButton() {
+        val installStates = viewModel.installStates.value ?: return
+        val downloadStates = viewModel.downloadStates.value ?: return
+        val updateCount = installStates.values.count { it.first == InstallState.UPDATE_AVAILABLE }
+        if (updateCount >= 1) {
+            binding.btnUpdateAll.text = getString(R.string.btn_update_all, updateCount)
+            binding.btnUpdateAll.visibility = View.VISIBLE
+            val anyDownloading = installStates.entries.any { (appId, pair) ->
+                pair.first == InstallState.UPDATE_AVAILABLE &&
+                        downloadStates[appId]?.state == CardDownloadState.DOWNLOADING
+            }
+            binding.btnUpdateAll.isEnabled = !anyDownloading
+        } else {
+            binding.btnUpdateAll.visibility = View.GONE
+        }
     }
 
     private fun cleanupSelfUpdateApk() {

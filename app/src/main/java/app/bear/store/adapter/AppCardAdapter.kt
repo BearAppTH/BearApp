@@ -19,7 +19,13 @@ import app.bear.store.model.InstallState
 import coil.load
 
 enum class CardDownloadState { IDLE, DOWNLOADING, COMPLETE, ERROR }
-data class DownloadInfo(val state: CardDownloadState, val progress: Int = 0, val error: String? = null)
+data class DownloadInfo(
+    val state: CardDownloadState,
+    val progress: Int = 0,
+    val error: String? = null,
+    val downloadedBytes: Long = 0L,
+    val totalBytes: Long = 0L
+)
 enum class ChipFilter { ALL, UPDATES, INSTALLED }
 
 data class AppCardState(
@@ -28,7 +34,9 @@ data class AppCardState(
     val progress: Int = 0,
     val installState: InstallState = InstallState.NOT_INSTALLED,
     val installedVersion: String? = null,
-    val downloadError: String? = null
+    val downloadError: String? = null,
+    val downloadedBytes: Long = 0L,
+    val totalBytes: Long = 0L
 )
 
 class AppCardAdapter(
@@ -55,12 +63,12 @@ class AppCardAdapter(
         applyFilter()
     }
 
-    fun updateState(appId: String, state: CardDownloadState, progress: Int = 0, error: String? = null) {
+    fun updateState(appId: String, state: CardDownloadState, progress: Int = 0, error: String? = null, downloadedBytes: Long = 0L, totalBytes: Long = 0L) {
         val allIdx = allItems.indexOfFirst { it.app.id == appId }
-        if (allIdx >= 0) allItems[allIdx] = allItems[allIdx].copy(downloadState = state, progress = progress, downloadError = error)
+        if (allIdx >= 0) allItems[allIdx] = allItems[allIdx].copy(downloadState = state, progress = progress, downloadError = error, downloadedBytes = downloadedBytes, totalBytes = totalBytes)
         val idx = items.indexOfFirst { it.app.id == appId }
         if (idx < 0) return
-        items[idx] = items[idx].copy(downloadState = state, progress = progress, downloadError = error)
+        items[idx] = items[idx].copy(downloadState = state, progress = progress, downloadError = error, downloadedBytes = downloadedBytes, totalBytes = totalBytes)
         notifyItemChanged(idx)
     }
 
@@ -241,7 +249,11 @@ class AppCardAdapter(
                     tvDownloadError.visibility = View.GONE
                     progressLayout.visibility = View.VISIBLE
                     progressBar.progress = cardState.progress
-                    tvProgress.text = "${cardState.progress}%"
+                    tvProgress.text = if (cardState.totalBytes > 0L) {
+                        "${cardState.progress}% (${formatFileSize(cardState.downloadedBytes)} / ${formatFileSize(cardState.totalBytes)})"
+                    } else {
+                        "${cardState.progress}%"
+                    }
                     btnCancel.setOnClickListener { onCancel(app) }
                     btnInstall.visibility = View.GONE
                     layoutActionRow.visibility = View.GONE
