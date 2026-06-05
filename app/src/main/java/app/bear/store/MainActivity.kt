@@ -287,7 +287,7 @@ class MainActivity : AppCompatActivity() {
             b = dialogBinding,
             state = state,
             onCancelClick = { viewModel.cancelSelfUpdate(); dialog.dismiss() },
-            onUpdateClick = { _, downloadUrl -> dialog.dismiss(); startSelfUpdate(downloadUrl) }
+            onUpdateClick = { _, downloadUrl -> startSelfUpdate(downloadUrl) }
         )
 
         val updateObserver = Observer<SelfUpdateState> { state ->
