@@ -63,11 +63,11 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           retention-days: 30
 
-  # Auto version, build, tag, and release on every main push
+  # Auto version bump, build, and release on every main push
   auto-release:
     name: Auto Version, Build & Release
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip ci]')
     permissions:
       contents: write
 
@@ -76,6 +76,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -93,16 +94,54 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Set version from run number
+      - name: Compute next SemVer version
         id: version
         run: |
-          VERSION_NAME=$(grep -oP '(?<=versionName ")([^"]+)' app/build.gradle)
-          NEW_CODE=${{ github.run_number }}
-          TAG="v${VERSION_NAME}.${NEW_CODE}"
-          sed -i "s/versionCode [0-9]*/versionCode ${NEW_CODE}/" app/build.gradle
-          echo "TAG=${TAG}" >> $GITHUB_OUTPUT
-          echo "NEW_CODE=${NEW_CODE}" >> $GITHUB_OUTPUT
-          echo "Version: ${TAG}"
+          # Find the latest 3-part tag (vX.Y.Z), ignore old 4-part tags
+          LATEST_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+
+          if [ -z "$LATEST_TAG" ]; then
+            # No 3-part tag yet — use versionName from build.gradle as base
+            BASE=$(grep -oP '(?<=versionName ")([^"]+)' app/build.gradle)
+            LATEST_TAG="v${BASE}"
+            echo "No 3-part tag found, using build.gradle base: ${LATEST_TAG}"
+          fi
+
+          VERSION_BODY="${LATEST_TAG#v}"
+          MAJOR=$(echo "$VERSION_BODY" | cut -d. -f1)
+          MINOR=$(echo "$VERSION_BODY" | cut -d. -f2)
+          PATCH=$(echo "$VERSION_BODY" | cut -d. -f3)
+
+          # Increment patch; when patch would exceed 9, bump minor and reset patch
+          NEW_PATCH=$((PATCH + 1))
+          NEW_MINOR=$MINOR
+          NEW_MAJOR=$MAJOR
+          if [ "$NEW_PATCH" -gt 9 ]; then
+            NEW_PATCH=0
+            NEW_MINOR=$((MINOR + 1))
+          fi
+          if [ "$NEW_MINOR" -gt 9 ]; then
+            NEW_MINOR=0
+            NEW_MAJOR=$((MAJOR + 1))
+          fi
+
+          NEW_VERSION="${NEW_MAJOR}.${NEW_MINOR}.${NEW_PATCH}"
+          NEW_TAG="v${NEW_VERSION}"
+          # versionCode = total number of releases + 1 (monotonically increasing)
+          NEW_CODE=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | wc -l)
+          NEW_CODE=$((NEW_CODE + 1))
+
+          echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "NEW_TAG=${NEW_TAG}"         >> $GITHUB_OUTPUT
+          echo "NEW_CODE=${NEW_CODE}"       >> $GITHUB_OUTPUT
+          echo "Bumping ${LATEST_TAG} → ${NEW_TAG} (versionCode ${NEW_CODE})"
+
+      - name: Update build.gradle with new version
+        run: |
+          sed -i "s/versionCode [0-9]*/versionCode ${{ steps.version.outputs.NEW_CODE }}/" app/build.gradle
+          sed -i 's/versionName "[^"]*"/versionName "${{ steps.version.outputs.NEW_VERSION }}"/' app/build.gradle
+          echo "build.gradle updated:"
+          grep -E 'versionCode|versionName' app/build.gradle
 
       - name: Decode keystore
         run: |
@@ -120,19 +159,27 @@ jobs:
       - name: Rename APK
         run: |
           APK_SRC=$(find app/build/outputs/apk/release/ -name "*.apk" | head -1)
-          mv "$APK_SRC" "app/build/outputs/apk/release/bearapp-${{ steps.version.outputs.TAG }}.apk"
+          mv "$APK_SRC" "app/build/outputs/apk/release/bearapp-${{ steps.version.outputs.NEW_TAG }}.apk"
+
+      - name: Commit version bump to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add app/build.gradle
+          git commit -m "chore: bump version to ${{ steps.version.outputs.NEW_VERSION }} [skip ci]"
+          git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" main
 
       - name: Generate changelog
         id: changelog
         run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          PREV_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1 || echo "")
           if [ -n "$PREV_TAG" ]; then
             RANGE="${PREV_TAG}..HEAD"
           else
             RANGE="-20"
           fi
           COMMITS=$(git log --pretty=format:"- %s" $RANGE \
-            | grep -Ev "chore: bump versionCode|\[skip ci\]" \
+            | grep -Ev "chore: bump version|\[skip ci\]" \
             || echo "- อัปเดตระบบภายใน")
           if [ -z "$COMMITS" ]; then
             COMMITS="- อัปเดตระบบภายใน"
@@ -143,7 +190,7 @@ jobs:
             echo "CHANGELOG_EOF"
           } >> $GITHUB_OUTPUT
 
-      - name: Get APK info
+      - name: Get APK size
         id: apk_info
         run: |
           APK_FILE=$(find app/build/outputs/apk/release/ -name "bearapp-*.apk" | head -1)
@@ -152,19 +199,17 @@ jobs:
 
       - name: Create and push tag
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "${{ steps.version.outputs.TAG }}" || true
+          git tag "${{ steps.version.outputs.NEW_TAG }}" || true
           git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" \
-            "${{ steps.version.outputs.TAG }}" || true
+            "${{ steps.version.outputs.NEW_TAG }}" || true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.TAG }}
-          name: "Bear Store ${{ steps.version.outputs.TAG }}"
+          tag_name: ${{ steps.version.outputs.NEW_TAG }}
+          name: "Bear Store ${{ steps.version.outputs.NEW_TAG }}"
           body: |
-            ## Bear Store ${{ steps.version.outputs.TAG }}
+            ## Bear Store ${{ steps.version.outputs.NEW_TAG }}
 
             ### การเปลี่ยนแปลง
             ${{ steps.changelog.outputs.NOTES }}
