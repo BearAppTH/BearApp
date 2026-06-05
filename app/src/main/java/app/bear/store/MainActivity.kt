@@ -5,7 +5,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
+import android.net.Network
 import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -47,6 +49,17 @@ class MainActivity : AppCompatActivity() {
     private val downloadedFiles = mutableMapOf<String, File>()
     private val pendingApkCleanup = mutableSetOf<String>()
     private var pendingDownloadApp: AppItem? = null
+    private var currentChipFilter = ChipFilter.ALL
+
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            runOnUiThread {
+                if (viewModel.errorMessage.value != null && viewModel.isLoading.value != true) {
+                    viewModel.fetchApps()
+                }
+            }
+        }
+    }
 
     private val installPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -83,6 +96,10 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        currentChipFilter = ChipFilter.values().getOrElse(
+            savedInstanceState?.getInt(KEY_CHIP_FILTER, 0) ?: 0
+        ) { ChipFilter.ALL }
+
         setupToolbar()
         setupRecyclerView()
         observeViewModel()
@@ -96,10 +113,28 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        cm.registerNetworkCallback(NetworkRequest.Builder().build(), networkCallback)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        cm.unregisterNetworkCallback(networkCallback)
+    }
+
     override fun onResume() {
         super.onResume()
         viewModel.resetCompletedDownloads()
         viewModel.refreshInstallStates()
+        cleanupSelfUpdateApk()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt(KEY_CHIP_FILTER, currentChipFilter.ordinal)
     }
 
     // ─── Setup ───────────────────────────────────────────────────────────────
@@ -125,6 +160,7 @@ class MainActivity : AppCompatActivity() {
         )
         binding.rvApps.layoutManager = LinearLayoutManager(this)
         binding.rvApps.adapter = adapter
+        adapter.setChipFilter(currentChipFilter)
 
         adapter.onFilterEmpty = { isEmpty ->
             binding.tvSearchEmpty.visibility = if (isEmpty) View.VISIBLE else View.GONE
@@ -220,6 +256,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.chipInstalled in checkedIds -> ChipFilter.INSTALLED
                 else -> ChipFilter.ALL
             }
+            currentChipFilter = filter
             adapter.setChipFilter(filter)
         }
 
@@ -541,6 +578,13 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun cleanupSelfUpdateApk() {
+        val state = viewModel.selfUpdateState.value
+        if (state !is SelfUpdateState.Downloading && state !is SelfUpdateState.ReadyToInstall) {
+            getExternalFilesDir(null)?.let { File(it, "bear-store-update.apk").delete() }
+        }
+    }
+
     // ─── Notification permission ─────────────────────────────────────────────
 
     private fun requestNotificationPermission() {
@@ -551,5 +595,9 @@ class MainActivity : AppCompatActivity() {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
+    }
+
+    companion object {
+        private const val KEY_CHIP_FILTER = "chip_filter"
     }
 }
