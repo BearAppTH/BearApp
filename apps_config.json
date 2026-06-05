@@ -3,18 +3,18 @@
     {
       "id": "youtube",
       "name": "YouTube",
-      "version": "21.21.80",
-      "updated_at": "2569-05-29",
-      "download_url": "https://pub-e102d8b287a14e2fa11b0303b3e628df.r2.dev/YouTube_21.21.80.apk",
-      "package_name": "app.bear.tube"
+      "package_name": "app.bear.tube",
+      "github_owner": "BearAppTH",
+      "github_repo": "app",
+      "github_file_prefix": "YouTube"
     },
     {
       "id": "youtube_music",
       "name": "YouTube Music",
-      "version": "9.21.51",
-      "updated_at": "2569-05-29",
-      "download_url": "https://pub-e102d8b287a14e2fa11b0303b3e628df.r2.dev/YouTube%20Music_9.21.51.apk",
-      "package_name": "app.bear.music"
+      "package_name": "app.bear.music",
+      "github_owner": "BearAppTH",
+      "github_repo": "app",
+      "github_file_prefix": "YouTube.Music"
     },
     {
       "id": "bear_microg",

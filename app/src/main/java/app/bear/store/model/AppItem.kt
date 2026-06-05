@@ -13,7 +13,8 @@ data class AppItem(
     val description: String = "",
     val changelog: String = "",
     val githubOwner: String = "",
-    val githubRepo: String = ""
+    val githubRepo: String = "",
+    val githubFilePrefix: String = ""
 ) {
     val hasDownloadUrl: Boolean get() = downloadUrl.isNotBlank()
     val isGitHubManaged: Boolean get() = githubOwner.isNotBlank() && githubRepo.isNotBlank()

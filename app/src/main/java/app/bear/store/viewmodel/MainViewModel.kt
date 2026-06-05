@@ -101,7 +101,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun resolveGitHubApps(apps: List<AppItem>): List<AppItem> = apps.map { app ->
         if (!app.isGitHubManaged) return@map app
         try {
-            val release = apiService.getLatestRelease(app.githubOwner, app.githubRepo)
+            val release = if (app.githubFilePrefix.isNotBlank()) {
+                apiService.getLatestReleaseAsset(
+                    app.githubOwner, app.githubRepo, app.githubFilePrefix
+                ) ?: return@map app
+            } else {
+                apiService.getLatestRelease(app.githubOwner, app.githubRepo)
+            }
             app.copy(
                 version = release.tagName.trimStart('v', 'V'),
                 downloadUrl = release.apkUrl ?: app.downloadUrl,
