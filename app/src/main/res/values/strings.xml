@@ -23,6 +23,8 @@
     <string name="btn_retry">ลองใหม่</string>
     <string name="btn_close">ปิด</string>
     <string name="btn_update_now">อัปเดตเดี๋ยวนี้</string>
+    <string name="btn_open">เปิดแอป</string>
+    <string name="btn_confirm">ยืนยัน</string>
     <string name="url_unavailable">ยังไม่ระบุ</string>
 
     <!-- Version info -->
@@ -58,7 +60,15 @@
     <string name="toast_uninstall_success">ถอนการติดตั้งแล้ว</string>
     <string name="toast_cached_data">ไม่มีอินเทอร์เน็ต — แสดงข้อมูลที่บันทึกไว้</string>
 
+    <!-- Uninstall confirmation -->
+    <string name="dialog_uninstall_title">ถอนการติดตั้ง</string>
+    <string name="dialog_uninstall_message">ต้องการถอนการติดตั้ง %s ใช่ไหม?</string>
+
+    <!-- Open app -->
+    <string name="toast_open_failed">ไม่สามารถเปิดแอปได้</string>
+
     <!-- Errors -->
+    <string name="error_no_network">ไม่มีการเชื่อมต่ออินเทอร์เน็ต</string>
     <string name="error_unknown">เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ</string>
     <string name="error_no_data">ไม่ได้รับข้อมูล</string>
     <string name="error_check_failed">ตรวจสอบไม่ได้</string>

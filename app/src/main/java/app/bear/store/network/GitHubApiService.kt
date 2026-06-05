@@ -1,6 +1,7 @@
 package app.bear.store.network
 
 import android.content.Context
+import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -19,38 +20,54 @@ class GitHubApiService(private val context: Context) {
 
     fun getAppsConfig(owner: String, repo: String, branch: String = "main"): AppsConfig {
         val url = "https://raw.githubusercontent.com/$owner/$repo/$branch/apps_config.json"
-        val request = Request.Builder()
-            .url(url)
-            .header("Cache-Control", "no-cache")
-            .header("User-Agent", "BearApp-Installer/1.0")
-            .build()
-        val response = client.newCall(request).execute()
+        val response = client.newCall(
+            Request.Builder().url(url)
+                .header("Cache-Control", "no-cache")
+                .header("User-Agent", "BearApp-Installer/1.0")
+                .build()
+        ).execute()
         if (response.code == 403 || response.code == 429) throw Exception(context.getString(R.string.error_rate_limit))
         val body = response.body?.string() ?: throw Exception(context.getString(R.string.error_no_data))
         if (!response.isSuccessful) throw Exception("HTTP ${response.code}")
         return parseAppsConfig(body)
     }
 
-    fun getLatestRelease(owner: String, repo: String): AppRelease {
-        val obj = fetchReleaseJson(owner, repo)
+    // Fetches the latest release JSON — exposed so callers can cache it per (owner/repo)
+    // and avoid duplicate network calls for multiple apps from the same repository.
+    fun fetchRelease(owner: String, repo: String): JsonObject {
+        val response = client.newCall(
+            Request.Builder()
+                .url("https://api.github.com/repos/$owner/$repo/releases/latest")
+                .header("Accept", "application/vnd.github.v3+json")
+                .header("Cache-Control", "no-cache")
+                .header("User-Agent", "BearApp-Installer/1.0")
+                .build()
+        ).execute()
+        if (response.code == 403 || response.code == 429) throw Exception(context.getString(R.string.error_rate_limit))
+        val body = response.body?.string() ?: throw Exception(context.getString(R.string.error_no_data))
+        if (!response.isSuccessful) throw Exception("HTTP ${response.code}")
+        return JsonParser.parseString(body).asJsonObject
+    }
+
+    // Parses an AppRelease from a pre-fetched release JSON using the first APK asset.
+    fun parseRelease(obj: JsonObject): AppRelease {
         val assets = obj.getAsJsonArray("assets")
-        val apkUrl = assets?.firstOrNull { el ->
+        val apkAsset = assets?.firstOrNull { el ->
             el.asJsonObject.get("name")?.asString?.endsWith(".apk") == true
-        }?.asJsonObject?.get("browser_download_url")?.asString
+        }?.asJsonObject
         return AppRelease(
             tagName = obj.get("tag_name")?.asString ?: "",
             name = obj.get("name")?.asString ?: "",
             body = obj.get("body")?.asString ?: "",
             publishedAt = obj.get("published_at")?.asString ?: "",
-            apkUrl = apkUrl
+            apkUrl = apkAsset?.get("browser_download_url")?.asString,
+            apkSize = apkAsset?.get("size")?.asLong ?: 0L
         )
     }
 
-    // Finds a release asset by filename prefix (e.g. "YouTube" matches "YouTube_21_21_80.apk").
-    // Version is extracted by stripping the prefix + underscore and extension, then replacing
-    // remaining underscores with dots: "21_21_80" → "21.21.80".
-    fun getLatestReleaseAsset(owner: String, repo: String, filePrefix: String): AppRelease? {
-        val obj = fetchReleaseJson(owner, repo)
+    // Parses an AppRelease from a pre-fetched release JSON by matching asset filename prefix.
+    // e.g. filePrefix="YouTube" matches "YouTube_21_21_80.apk" → version "21.21.80"
+    fun parseAssetFromRelease(obj: JsonObject, filePrefix: String): AppRelease? {
         val assets = obj.getAsJsonArray("assets") ?: return null
         val prefix = "${filePrefix}_"
         val asset = assets.firstOrNull { el ->
@@ -59,30 +76,20 @@ class GitHubApiService(private val context: Context) {
         }?.asJsonObject ?: return null
         val assetName = asset.get("name")?.asString ?: return null
         val downloadUrl = asset.get("browser_download_url")?.asString ?: return null
+        val size = asset.get("size")?.asLong ?: 0L
         val version = assetName.removePrefix(prefix).removeSuffix(".apk").replace("_", ".")
         return AppRelease(
             tagName = version,
             name = obj.get("name")?.asString ?: "",
             body = obj.get("body")?.asString ?: "",
             publishedAt = obj.get("published_at")?.asString ?: "",
-            apkUrl = downloadUrl
+            apkUrl = downloadUrl,
+            apkSize = size
         )
     }
 
-    private fun fetchReleaseJson(owner: String, repo: String) =
-        client.newCall(
-            Request.Builder()
-                .url("https://api.github.com/repos/$owner/$repo/releases/latest")
-                .header("Accept", "application/vnd.github.v3+json")
-                .header("Cache-Control", "no-cache")
-                .header("User-Agent", "BearApp-Installer/1.0")
-                .build()
-        ).execute().let { response ->
-            if (response.code == 403 || response.code == 429) throw Exception(context.getString(R.string.error_rate_limit))
-            val body = response.body?.string() ?: throw Exception(context.getString(R.string.error_no_data))
-            if (!response.isSuccessful) throw Exception("HTTP ${response.code}")
-            JsonParser.parseString(body).asJsonObject
-        }
+    // Convenience wrappers that fetch + parse in one call (used by checkSelfUpdate).
+    fun getLatestRelease(owner: String, repo: String): AppRelease = parseRelease(fetchRelease(owner, repo))
 
     private fun parseAppsConfig(json: String): AppsConfig {
         val obj = JsonParser.parseString(json).asJsonObject

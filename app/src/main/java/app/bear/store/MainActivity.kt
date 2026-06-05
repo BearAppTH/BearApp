@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -115,7 +117,8 @@ class MainActivity : AppCompatActivity() {
             onInstall   = { app -> installApk(app) },
             onUninstall = { app -> uninstallApp(app) },
             onCancel    = { app -> viewModel.cancelDownload(app.id) },
-            onDetails   = { app -> showAppDetailDialog(app) }
+            onDetails   = { app -> showAppDetailDialog(app) },
+            onOpen      = { app -> openApp(app) }
         )
         binding.rvApps.layoutManager = LinearLayoutManager(this)
         binding.rvApps.adapter = adapter
@@ -375,7 +378,18 @@ class MainActivity : AppCompatActivity() {
 
     // ─── Download / Install / Uninstall ──────────────────────────────────────
 
+    private fun isNetworkAvailable(): Boolean {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
     private fun checkPermissionAndDownload(app: AppItem) {
+        if (!isNetworkAvailable()) {
+            Snackbar.make(binding.root, R.string.error_no_network, Snackbar.LENGTH_LONG).show()
+            return
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
             pendingDownloadApp = app
             installPermissionLauncher.launch(
@@ -420,15 +434,32 @@ class MainActivity : AppCompatActivity() {
 
     private fun uninstallApp(app: AppItem) {
         if (app.packageName.isBlank()) return
-        try {
-            uninstallLauncher.launch(
-                Intent(Intent.ACTION_DELETE).apply {
-                    data = Uri.parse("package:${app.packageName}")
-                    putExtra(Intent.EXTRA_RETURN_RESULT, true)
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.dialog_uninstall_title)
+            .setMessage(getString(R.string.dialog_uninstall_message, app.name))
+            .setPositiveButton(R.string.btn_confirm) { _, _ ->
+                try {
+                    uninstallLauncher.launch(
+                        Intent(Intent.ACTION_DELETE).apply {
+                            data = Uri.parse("package:${app.packageName}")
+                            putExtra(Intent.EXTRA_RETURN_RESULT, true)
+                        }
+                    )
+                } catch (e: Exception) {
+                    Toast.makeText(this, R.string.toast_uninstall_failed, Toast.LENGTH_SHORT).show()
                 }
-            )
-        } catch (e: Exception) {
-            Toast.makeText(this, R.string.toast_uninstall_failed, Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(R.string.btn_cancel, null)
+            .show()
+    }
+
+    private fun openApp(app: AppItem) {
+        if (app.packageName.isBlank()) return
+        val intent = packageManager.getLaunchIntentForPackage(app.packageName)
+        if (intent != null) {
+            startActivity(intent)
+        } else {
+            Toast.makeText(this, R.string.toast_open_failed, Toast.LENGTH_SHORT).show()
         }
     }
 

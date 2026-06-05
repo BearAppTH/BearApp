@@ -7,6 +7,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
+import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -98,23 +99,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun resolveGitHubApps(apps: List<AppItem>): List<AppItem> = apps.map { app ->
-        if (!app.isGitHubManaged) return@map app
-        try {
-            val release = if (app.githubFilePrefix.isNotBlank()) {
-                apiService.getLatestReleaseAsset(
-                    app.githubOwner, app.githubRepo, app.githubFilePrefix
-                ) ?: return@map app
-            } else {
-                apiService.getLatestRelease(app.githubOwner, app.githubRepo)
-            }
-            app.copy(
-                version = release.tagName.trimStart('v', 'V'),
-                downloadUrl = release.apkUrl ?: app.downloadUrl,
-                updatedAt = toThaiDate(release.publishedAt).ifBlank { app.updatedAt },
-                changelog = release.body.ifBlank { app.changelog }
-            )
-        } catch (_: Exception) { app }
+    private fun resolveGitHubApps(apps: List<AppItem>): List<AppItem> {
+        // Cache release JSON per "owner/repo" to avoid hitting the same endpoint multiple times
+        val jsonCache = mutableMapOf<String, JsonObject>()
+        return apps.map { app ->
+            if (!app.isGitHubManaged) return@map app
+            try {
+                val key = "${app.githubOwner}/${app.githubRepo}"
+                val releaseJson = jsonCache.getOrPut(key) {
+                    apiService.fetchRelease(app.githubOwner, app.githubRepo)
+                }
+                val release = if (app.githubFilePrefix.isNotBlank()) {
+                    apiService.parseAssetFromRelease(releaseJson, app.githubFilePrefix) ?: return@map app
+                } else {
+                    apiService.parseRelease(releaseJson)
+                }
+                app.copy(
+                    version = release.tagName.trimStart('v', 'V'),
+                    downloadUrl = release.apkUrl ?: app.downloadUrl,
+                    updatedAt = toThaiDate(release.publishedAt).ifBlank { app.updatedAt },
+                    changelog = release.body.ifBlank { app.changelog },
+                    downloadSize = release.apkSize
+                )
+            } catch (_: Exception) { app }
+        }
     }
 
     private fun toThaiDate(isoDate: String): String {

@@ -36,7 +36,8 @@ class AppCardAdapter(
     private val onInstall: (AppItem) -> Unit,
     private val onUninstall: (AppItem) -> Unit,
     private val onCancel: (AppItem) -> Unit,
-    private val onDetails: (AppItem) -> Unit
+    private val onDetails: (AppItem) -> Unit,
+    private val onOpen: (AppItem) -> Unit
 ) : RecyclerView.Adapter<AppCardAdapter.ViewHolder>() {
 
     private val allItems = mutableListOf<AppCardState>()
@@ -190,18 +191,27 @@ class AppCardAdapter(
 
                     when {
                         isInstalled && !hasUpdate -> {
-                            btnDownload.visibility = View.GONE
-                            btnDownload.setOnClickListener(null)
+                            // Open + Uninstall buttons for installed/up-to-date apps
+                            btnDownload.visibility = View.VISIBLE
+                            btnDownload.isEnabled = true
+                            btnDownload.text = ctx.getString(R.string.btn_open)
+                            btnDownload.backgroundTintList =
+                                ContextCompat.getColorStateList(ctx, R.color.success)
+                            btnDownload.setOnClickListener { onOpen(app) }
                             btnUninstall.visibility = View.VISIBLE
                             btnUninstall.isEnabled = true
-                            (btnUninstall.layoutParams as LinearLayout.LayoutParams).marginStart = 0
+                            (btnUninstall.layoutParams as LinearLayout.LayoutParams).marginStart =
+                                root.context.resources.getDimensionPixelSize(R.dimen.btn_gap)
                             btnUninstall.setOnClickListener { onUninstall(app) }
                         }
                         hasUpdate -> {
                             btnDownload.visibility = View.VISIBLE
                             btnDownload.isEnabled = app.hasDownloadUrl
+                            btnDownload.backgroundTintList =
+                                ContextCompat.getColorStateList(ctx, R.color.primary)
+                            val sizeStr = if (app.downloadSize > 0L) " (${formatFileSize(app.downloadSize)})" else ""
                             btnDownload.text = if (app.hasDownloadUrl)
-                                ctx.getString(R.string.btn_update)
+                                ctx.getString(R.string.btn_update) + sizeStr
                             else
                                 ctx.getString(R.string.url_unavailable)
                             btnDownload.setOnClickListener { onDownload(app) }
@@ -214,8 +224,11 @@ class AppCardAdapter(
                         else -> {
                             btnDownload.visibility = View.VISIBLE
                             btnDownload.isEnabled = app.hasDownloadUrl
+                            btnDownload.backgroundTintList =
+                                ContextCompat.getColorStateList(ctx, R.color.primary)
+                            val sizeStr = if (app.downloadSize > 0L) " (${formatFileSize(app.downloadSize)})" else ""
                             btnDownload.text = if (app.hasDownloadUrl)
-                                ctx.getString(R.string.btn_download)
+                                ctx.getString(R.string.btn_download) + sizeStr
                             else
                                 ctx.getString(R.string.url_unavailable)
                             btnDownload.setOnClickListener { onDownload(app) }
@@ -254,6 +267,8 @@ class AppCardAdapter(
 
                     btnDownload.visibility = View.VISIBLE
                     btnDownload.isEnabled = app.hasDownloadUrl
+                    btnDownload.backgroundTintList =
+                        ContextCompat.getColorStateList(ctx, R.color.primary)
                     btnDownload.text = ctx.getString(R.string.btn_retry)
                     btnDownload.setOnClickListener { onDownload(app) }
 
@@ -274,6 +289,12 @@ class AppCardAdapter(
     }
 
     override fun getItemCount() = items.size
+
+    private fun formatFileSize(bytes: Long): String = when {
+        bytes <= 0L -> ""
+        bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+        else -> "${"%.1f".format(bytes / (1024f * 1024f))} MB"
+    }
 
     private fun iconResFor(id: String) = when (id) {
         "youtube" -> R.drawable.ic_app_youtube

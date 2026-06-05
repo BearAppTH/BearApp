@@ -23,6 +23,8 @@
     <string name="btn_retry">Retry</string>
     <string name="btn_close">Close</string>
     <string name="btn_update_now">Update Now</string>
+    <string name="btn_open">Open App</string>
+    <string name="btn_confirm">Confirm</string>
     <string name="url_unavailable">Unavailable</string>
 
     <!-- Version info -->
@@ -58,7 +60,15 @@
     <string name="toast_uninstall_success">Uninstalled</string>
     <string name="toast_cached_data">No internet — showing cached data</string>
 
+    <!-- Uninstall confirmation -->
+    <string name="dialog_uninstall_title">Uninstall</string>
+    <string name="dialog_uninstall_message">Uninstall %s?</string>
+
+    <!-- Open app -->
+    <string name="toast_open_failed">Cannot open app</string>
+
     <!-- Errors -->
+    <string name="error_no_network">No internet connection</string>
     <string name="error_unknown">An unknown error occurred</string>
     <string name="error_no_data">No data received</string>
     <string name="error_check_failed">Cannot check</string>
