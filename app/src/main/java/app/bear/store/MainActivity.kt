@@ -107,6 +107,7 @@ class MainActivity : AppCompatActivity() {
         currentChipFilter = ChipFilter.values().getOrElse(
             savedInstanceState?.getInt(KEY_CHIP_FILTER, 0) ?: 0
         ) { ChipFilter.ALL }
+        pendingAutoDownload = savedInstanceState?.getBoolean(KEY_PENDING_AUTO_DOWNLOAD, false) ?: false
 
         restoreDownloadedFiles()
         cleanupOrphanedApks()
@@ -147,6 +148,7 @@ class MainActivity : AppCompatActivity() {
         super.onSaveInstanceState(outState)
         outState.putInt(KEY_CHIP_FILTER, currentChipFilter.ordinal)
         outState.putString(KEY_LANGUAGE, PrefsManager(this).language)
+        outState.putBoolean(KEY_PENDING_AUTO_DOWNLOAD, pendingAutoDownload)
     }
 
     // ─── Setup ───────────────────────────────────────────────────────────────
@@ -247,6 +249,19 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             viewModel.triggerAutoUpdate.collect { autoDownloadUpdates() }
+        }
+
+        lifecycleScope.launch {
+            (application as BearApplication).pmInstallEvents.collect { (appId, success) ->
+                if (appId == null) return@collect
+                if (success) {
+                    downloadedFiles.remove(appId)?.delete()
+                    pendingApkCleanup.remove(appId)
+                    viewModel.clearDownloadState(appId)
+                    viewModel.refreshInstallStates()
+                }
+                // on failure, COMPLETE state persists → Install button stays for manual install
+            }
         }
     }
 
@@ -626,6 +641,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun autoDownloadUpdates() {
         if (!PrefsManager(this).autoUpdate) return
+        if (!isNetworkAvailable()) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
             pendingAutoDownload = true
             installPermissionLauncher.launch(
@@ -698,5 +714,6 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val KEY_CHIP_FILTER = "chip_filter"
         private const val KEY_LANGUAGE = "language"
+        private const val KEY_PENDING_AUTO_DOWNLOAD = "pending_auto_download"
     }
 }

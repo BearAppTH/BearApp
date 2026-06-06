@@ -4,15 +4,24 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import app.bear.store.InstallResultReceiver
 import app.bear.store.MainActivity
+import app.bear.store.PrefsManager
 import app.bear.store.R
 import app.bear.store.network.GitHubApiService
 import app.bear.store.util.VersionUtils
 import com.google.gson.JsonObject
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.io.File
+import java.util.concurrent.TimeUnit
 
 class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
@@ -20,7 +29,6 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineW
         return try {
             val apiService = GitHubApiService(applicationContext)
             val config = apiService.getAppsConfig(GITHUB_OWNER, GITHUB_REPO)
-            // Resolve actual versions from GitHub releases before comparing
             val jsonCache = mutableMapOf<String, JsonObject>()
             val apps = config.apps.map { app ->
                 if (!app.isGitHubManaged) return@map app
@@ -34,7 +42,10 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineW
                     } else {
                         apiService.parseRelease(releaseJson)
                     }
-                    app.copy(version = release.tagName.trimStart('v', 'V'))
+                    app.copy(
+                        version = release.tagName.trimStart('v', 'V'),
+                        downloadUrl = release.apkUrl ?: app.downloadUrl
+                    )
                 } catch (_: Exception) { app }
             }
             val pm = applicationContext.packageManager
@@ -46,9 +57,61 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineW
                     VersionUtils.isVersionNewer(app.version, info.versionName ?: "")
                 } catch (_: PackageManager.NameNotFoundException) { false }
             }
-            if (updates.isNotEmpty()) showUpdateNotification(updates.map { it.name })
+            if (updates.isNotEmpty()) {
+                val prefs = PrefsManager(applicationContext)
+                if (prefs.autoUpdate && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    autoDownloadAndInstall(updates)
+                } else {
+                    showUpdateNotification(updates.map { it.name })
+                }
+            }
             Result.success()
         } catch (_: Exception) { Result.retry() }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.S)
+    private suspend fun autoDownloadAndInstall(updates: List<app.bear.store.model.AppItem>) {
+        val client = OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(120, TimeUnit.SECONDS)
+            .build()
+        val packageInstaller = applicationContext.packageManager.packageInstaller
+        val noUrlApps = mutableListOf<String>()
+        for (app in updates) {
+            if (app.downloadUrl.isBlank()) { noUrlApps.add(app.name); continue }
+            val destFile = File(applicationContext.filesDir, "${app.id}-worker-update.apk")
+            try {
+                val response = client.newCall(Request.Builder().url(app.downloadUrl).build()).execute()
+                if (!response.isSuccessful) { noUrlApps.add(app.name); continue }
+                response.body?.use { body ->
+                    destFile.outputStream().use { body.byteStream().copyTo(it) }
+                }
+                val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+                params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
+                val sessionId = packageInstaller.createSession(params)
+                packageInstaller.openSession(sessionId).use { session ->
+                    destFile.inputStream().use { input ->
+                        session.openWrite(destFile.name, 0, destFile.length()).use { output ->
+                            input.copyTo(output)
+                            session.fsync(output)
+                        }
+                    }
+                    val intent = Intent(applicationContext, InstallResultReceiver::class.java).apply {
+                        putExtra(InstallResultReceiver.EXTRA_APP_ID, app.id)
+                    }
+                    val pendingIntent = PendingIntent.getBroadcast(
+                        applicationContext, sessionId, intent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+                    )
+                    session.commit(pendingIntent.intentSender)
+                }
+            } catch (_: Exception) {
+                noUrlApps.add(app.name)
+            } finally {
+                destFile.delete()
+            }
+        }
+        if (noUrlApps.isNotEmpty()) showUpdateNotification(noUrlApps)
     }
 
     private fun showUpdateNotification(names: List<String>) {
