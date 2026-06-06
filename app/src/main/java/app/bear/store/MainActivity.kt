@@ -35,6 +35,7 @@ import app.bear.store.model.AppItem
 import app.bear.store.model.InstallState
 import app.bear.store.model.SelfUpdateState
 import app.bear.store.viewmodel.MainViewModel
+import app.bear.store.worker.UpdateCheckWorker
 import coil.load
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
