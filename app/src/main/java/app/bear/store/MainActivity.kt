@@ -653,7 +653,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun processIntent(intent: Intent?) {
         if (intent?.getBooleanExtra(UpdateCheckWorker.EXTRA_TRIGGER_AUTO_DOWNLOAD, false) != true) return
-        if (!viewModel.apps.value.isNullOrEmpty()) viewModel.fetchApps()
+        if (!viewModel.apps.value.isNullOrEmpty() && viewModel.isLoading.value != true) viewModel.fetchApps()
     }
 
     private fun autoDownloadUpdates() {
