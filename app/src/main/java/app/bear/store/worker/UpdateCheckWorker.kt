@@ -76,20 +76,26 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineW
             .readTimeout(120, TimeUnit.SECONDS)
             .build()
         val packageInstaller = applicationContext.packageManager.packageInstaller
-        val noUrlApps = mutableListOf<String>()
+        val needsManualInstall = mutableListOf<String>()
         var committedCount = 0
         for (app in updates) {
-            if (app.downloadUrl.isBlank()) { noUrlApps.add(app.name); continue }
+            if (app.downloadUrl.isBlank()) { needsManualInstall.add(app.name); continue }
             val destFile = File(applicationContext.filesDir, "${app.id}-worker-update.apk")
             try {
                 val response = client.newCall(Request.Builder().url(app.downloadUrl).build()).execute()
-                if (!response.isSuccessful) { noUrlApps.add(app.name); continue }
+                if (!response.isSuccessful) { needsManualInstall.add(app.name); continue }
                 response.body?.use { body ->
                     destFile.outputStream().use { body.byteStream().copyTo(it) }
                 }
                 val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
                 params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
-                val sessionId = packageInstaller.createSession(params)
+                val sessionId = try {
+                    packageInstaller.createSession(params)
+                } catch (_: SecurityException) {
+                    // Not original installer — fall back to manual notification
+                    needsManualInstall.add(app.name)
+                    continue
+                }
                 packageInstaller.openSession(sessionId).use { session ->
                     destFile.inputStream().use { input ->
                         session.openWrite(destFile.name, 0, destFile.length()).use { output ->
@@ -108,13 +114,13 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineW
                 }
                 committedCount++
             } catch (_: Exception) {
-                noUrlApps.add(app.name)
+                needsManualInstall.add(app.name)
             } finally {
                 destFile.delete()
             }
         }
         if (committedCount > 0) showAutoInstallNotification(committedCount)
-        if (noUrlApps.isNotEmpty()) showUpdateNotification(noUrlApps)
+        if (needsManualInstall.isNotEmpty()) showUpdateNotification(needsManualInstall)
     }
 
     private fun showAutoInstallNotification(count: Int) {

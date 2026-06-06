@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 import android.os.StatFs
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -200,6 +201,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         progressJobs[app.id] = viewModelScope.launch(Dispatchers.IO) {
             downloadSemaphore.acquire()
             val call = downloadClient.newCall(Request.Builder().url(app.downloadUrl).build())
+            coroutineContext[Job]?.invokeOnCompletion { call.cancel() }
             try {
                 val response = call.execute()
                 if (!response.isSuccessful) throw Exception("HTTP ${response.code}")

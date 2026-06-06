@@ -159,6 +159,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
+        setIntent(intent)
         processIntent(intent)
     }
 
@@ -677,7 +678,8 @@ class MainActivity : AppCompatActivity() {
         apps.filter { app ->
             app.hasDownloadUrl &&
             installStates[app.id]?.first == InstallState.UPDATE_AVAILABLE &&
-            downloadStates[app.id]?.state != CardDownloadState.DOWNLOADING
+            downloadStates[app.id]?.state != CardDownloadState.DOWNLOADING &&
+            downloadStates[app.id]?.state != CardDownloadState.COMPLETE
         }.forEach { app -> beginDownload(app) }
     }
 
