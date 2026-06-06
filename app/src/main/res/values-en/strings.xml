@@ -118,4 +118,6 @@
     <string name="settings_language">Language</string>
     <string name="settings_language_thai">ไทย</string>
     <string name="settings_language_english">English</string>
+    <string name="settings_auto_update">Auto Update</string>
+    <string name="settings_auto_update_desc">Automatically download and install app updates</string>
 </resources>

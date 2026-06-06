@@ -50,6 +50,7 @@ class MainActivity : AppCompatActivity() {
     private val downloadedFiles = mutableMapOf<String, File>()
     private val pendingApkCleanup = mutableSetOf<String>()
     private var pendingDownloadApp: AppItem? = null
+    private var pendingAutoDownload = false
     private var currentChipFilter = ChipFilter.ALL
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
@@ -66,8 +67,14 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && packageManager.canRequestPackageInstalls()) {
-            pendingDownloadApp?.let { beginDownload(it) }
+            if (pendingAutoDownload) {
+                pendingAutoDownload = false
+                startAutoDownloads()
+            } else {
+                pendingDownloadApp?.let { beginDownload(it) }
+            }
         }
+        pendingDownloadApp = null
     }
 
     private val uninstallLauncher = registerForActivityResult(
@@ -225,11 +232,21 @@ class MainActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
-            viewModel.autoInstallTrigger.collect { app -> installApk(app) }
+            viewModel.autoInstallTrigger.collect { app ->
+                if (PrefsManager(this@MainActivity).autoUpdate) {
+                    installApkViaPM(app)
+                } else {
+                    installApk(app)
+                }
+            }
         }
 
         lifecycleScope.launch {
             viewModel.selfUpdateInstallTrigger.collect { file -> installApkFromFile(file) }
+        }
+
+        lifecycleScope.launch {
+            viewModel.triggerAutoUpdate.collect { autoDownloadUpdates() }
         }
     }
 
@@ -289,6 +306,8 @@ class MainActivity : AppCompatActivity() {
         if (prefs.language == PrefsManager.LANG_EN) b.rbLangEn.isChecked = true
         else b.rbLangTh.isChecked = true
 
+        b.switchAutoUpdate.isChecked = prefs.autoUpdate
+
         val dialog = MaterialAlertDialogBuilder(this)
             .setTitle(R.string.settings_title)
             .setView(b.root)
@@ -307,6 +326,10 @@ class MainActivity : AppCompatActivity() {
                 prefs.themeMode = newTheme
                 prefs.applyTheme()
             }
+        }
+
+        b.switchAutoUpdate.setOnCheckedChangeListener { _, isChecked ->
+            prefs.autoUpdate = isChecked
         }
 
         var suppressLangListener = false
@@ -599,6 +622,37 @@ class MainActivity : AppCompatActivity() {
         } else {
             binding.btnUpdateAll.visibility = View.GONE
         }
+    }
+
+    private fun autoDownloadUpdates() {
+        if (!PrefsManager(this).autoUpdate) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
+            pendingAutoDownload = true
+            installPermissionLauncher.launch(
+                Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+            )
+            return
+        }
+        startAutoDownloads()
+    }
+
+    private fun startAutoDownloads() {
+        val apps = viewModel.apps.value ?: return
+        val installStates = viewModel.installStates.value ?: return
+        val downloadStates = viewModel.downloadStates.value ?: return
+        apps.filter { app ->
+            app.hasDownloadUrl &&
+            installStates[app.id]?.first == InstallState.UPDATE_AVAILABLE &&
+            downloadStates[app.id]?.state != CardDownloadState.DOWNLOADING
+        }.forEach { app -> beginDownload(app) }
+    }
+
+    private fun installApkViaPM(app: AppItem) {
+        val file = downloadedFiles[app.id] ?: return
+        pendingApkCleanup.add(app.id)
+        viewModel.installApkViaPM(app.id, file)
     }
 
     private fun restoreDownloadedFiles() {

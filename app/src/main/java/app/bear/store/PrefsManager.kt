@@ -24,6 +24,10 @@ class PrefsManager(context: Context) {
         get() = prefs.getString("lang", LANG_TH) ?: LANG_TH
         set(v) { prefs.edit().putString("lang", v).apply() }
 
+    var autoUpdate: Boolean
+        get() = prefs.getBoolean("auto_update", false)
+        set(v) { prefs.edit().putBoolean("auto_update", v).apply() }
+
     fun applyTheme() {
         AppCompatDelegate.setDefaultNightMode(
             when (themeMode) {
