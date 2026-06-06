@@ -28,6 +28,11 @@ import app.bear.store.adapter.CardDownloadState
 import app.bear.store.adapter.DownloadInfo
 import app.bear.store.model.AppItem
 import app.bear.store.model.InstallState
+import android.app.PendingIntent
+import android.content.Intent
+import android.content.pm.PackageInstaller
+import android.os.Build
+import app.bear.store.InstallResultReceiver
 import app.bear.store.model.SelfUpdateState
 import app.bear.store.network.GitHubApiService
 import java.io.File
@@ -55,6 +60,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _autoInstallTrigger = MutableSharedFlow<AppItem>(extraBufferCapacity = 10)
     val autoInstallTrigger = _autoInstallTrigger.asSharedFlow()
+
+    private val _triggerAutoUpdate = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val triggerAutoUpdate = _triggerAutoUpdate.asSharedFlow()
 
     private val _selfUpdateState = MutableLiveData<SelfUpdateState>(SelfUpdateState.Checking)
     val selfUpdateState: LiveData<SelfUpdateState> = _selfUpdateState
@@ -100,6 +108,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 saveAppsCache(apps)
                 _apps.postValue(apps)
                 checkAllInstallStates(apps)
+                if (PrefsManager(getApplication()).autoUpdate) {
+                    _triggerAutoUpdate.emit(Unit)
+                }
             } catch (e: Exception) {
                 loadAppsCache()?.let { cached ->
                     _apps.postValue(cached)
@@ -332,6 +343,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun getApp(appId: String): AppItem? = _apps.value?.find { it.id == appId }
+
+    fun installApkViaPM(appId: String, apkFile: File) {
+        if (!apkFile.exists()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val packageInstaller = getApplication<Application>().packageManager.packageInstaller
+                val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
+                }
+                val sessionId = packageInstaller.createSession(params)
+                packageInstaller.openSession(sessionId).use { session ->
+                    apkFile.inputStream().use { input ->
+                        session.openWrite(apkFile.name, 0, apkFile.length()).use { output ->
+                            input.copyTo(output)
+                            session.fsync(output)
+                        }
+                    }
+                    val intent = Intent(getApplication(), InstallResultReceiver::class.java)
+                    val pendingIntent = PendingIntent.getBroadcast(
+                        getApplication(), sessionId, intent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+                    )
+                    session.commit(pendingIntent.intentSender)
+                }
+            } catch (_: Exception) {
+                _autoInstallTrigger.emit(getApp(appId) ?: return@launch)
+            }
+        }
+    }
 
     fun resetCompletedDownloads(keepIds: Set<String> = emptySet()) {
         val current = _downloadStates.value.orEmpty()
