@@ -361,7 +361,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             session.fsync(output)
                         }
                     }
-                    val intent = Intent(getApplication(), InstallResultReceiver::class.java)
+                    val intent = Intent(getApplication(), InstallResultReceiver::class.java).apply {
+                        putExtra(InstallResultReceiver.EXTRA_APP_ID, appId)
+                    }
                     val pendingIntent = PendingIntent.getBroadcast(
                         getApplication(), sessionId, intent,
                         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE

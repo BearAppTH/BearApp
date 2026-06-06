@@ -13,8 +13,11 @@ import androidx.work.WorkManager
 import app.bear.store.viewmodel.MainViewModel
 import app.bear.store.worker.UpdateCheckWorker
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.flow.MutableSharedFlow
 
 class BearApplication : Application() {
+
+    val pmInstallEvents = MutableSharedFlow<Pair<String?, Boolean>>(extraBufferCapacity = 10)
 
     override fun attachBaseContext(base: Context) {
         val lang = base.getSharedPreferences("bear_prefs", Context.MODE_PRIVATE)
