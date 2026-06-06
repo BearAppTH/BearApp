@@ -115,6 +115,9 @@ class MainActivity : AppCompatActivity() {
         setupRecyclerView()
         observeViewModel()
         setupListeners()
+        savedInstanceState?.getString(KEY_SEARCH_QUERY)?.let { q ->
+            if (q.isNotBlank()) binding.etSearch.setText(q)
+        }
         requestNotificationPermission()
         val savedLang = savedInstanceState?.getString(KEY_LANGUAGE)
         val langChanged = savedLang != null && savedLang != PrefsManager(this).language
@@ -122,6 +125,7 @@ class MainActivity : AppCompatActivity() {
             viewModel.fetchApps()
         } else {
             binding.shimmerLayout.visibility = View.GONE
+            processIntent(intent)
         }
     }
 
@@ -149,6 +153,12 @@ class MainActivity : AppCompatActivity() {
         outState.putInt(KEY_CHIP_FILTER, currentChipFilter.ordinal)
         outState.putString(KEY_LANGUAGE, PrefsManager(this).language)
         outState.putBoolean(KEY_PENDING_AUTO_DOWNLOAD, pendingAutoDownload)
+        outState.putString(KEY_SEARCH_QUERY, binding.etSearch.text?.toString() ?: "")
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        processIntent(intent)
     }
 
     // ─── Setup ───────────────────────────────────────────────────────────────
@@ -639,6 +649,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun processIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(UpdateCheckWorker.EXTRA_TRIGGER_AUTO_DOWNLOAD, false) != true) return
+        if (!viewModel.apps.value.isNullOrEmpty()) viewModel.fetchApps()
+    }
+
     private fun autoDownloadUpdates() {
         if (!PrefsManager(this).autoUpdate) return
         if (!isNetworkAvailable()) return
@@ -715,5 +730,6 @@ class MainActivity : AppCompatActivity() {
         private const val KEY_CHIP_FILTER = "chip_filter"
         private const val KEY_LANGUAGE = "language"
         private const val KEY_PENDING_AUTO_DOWNLOAD = "pending_auto_download"
+        private const val KEY_SEARCH_QUERY = "search_query"
     }
 }

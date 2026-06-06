@@ -104,6 +104,8 @@
     <string name="notif_updates_title">Updates available</string>
     <string name="notif_updates_message">%d app(s) have updates</string>
     <string name="notif_updates_named">%s has updates available</string>
+    <string name="notif_auto_update_title">Auto Update</string>
+    <string name="notif_auto_update_message">Installing %d app(s) in background</string>
 
     <!-- Menu -->
     <string name="menu_about">About</string>

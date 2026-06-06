@@ -77,6 +77,7 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineW
             .build()
         val packageInstaller = applicationContext.packageManager.packageInstaller
         val noUrlApps = mutableListOf<String>()
+        var committedCount = 0
         for (app in updates) {
             if (app.downloadUrl.isBlank()) { noUrlApps.add(app.name); continue }
             val destFile = File(applicationContext.filesDir, "${app.id}-worker-update.apk")
@@ -105,13 +106,27 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineW
                     )
                     session.commit(pendingIntent.intentSender)
                 }
+                committedCount++
             } catch (_: Exception) {
                 noUrlApps.add(app.name)
             } finally {
                 destFile.delete()
             }
         }
+        if (committedCount > 0) showAutoInstallNotification(committedCount)
         if (noUrlApps.isNotEmpty()) showUpdateNotification(noUrlApps)
+    }
+
+    private fun showAutoInstallNotification(count: Int) {
+        val ctx = applicationContext
+        val notification = NotificationCompat.Builder(ctx, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_bear_logo)
+            .setContentTitle(ctx.getString(R.string.notif_auto_update_title))
+            .setContentText(ctx.getString(R.string.notif_auto_update_message, count))
+            .setAutoCancel(true)
+            .build()
+        val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.notify(AUTO_UPDATE_NOTIF_ID, notification)
     }
 
     private fun showUpdateNotification(names: List<String>) {
@@ -123,6 +138,7 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineW
         }
         val intent = Intent(ctx, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra(EXTRA_TRIGGER_AUTO_DOWNLOAD, true)
         }
         val pendingIntent = PendingIntent.getActivity(
             ctx, 0, intent,
@@ -145,5 +161,7 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineW
         const val NOTIFICATION_ID = 1001
         const val GITHUB_OWNER = "bearappth"
         const val GITHUB_REPO = "bearapp"
+        const val EXTRA_TRIGGER_AUTO_DOWNLOAD = "trigger_auto_download"
+        private const val AUTO_UPDATE_NOTIF_ID = 1003
     }
 }

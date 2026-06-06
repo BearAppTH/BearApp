@@ -104,6 +104,8 @@
     <string name="notif_updates_title">มีอัปเดตใหม่</string>
     <string name="notif_updates_message">%d แอปมีอัปเดตใหม่</string>
     <string name="notif_updates_named">%s มีอัปเดตใหม่</string>
+    <string name="notif_auto_update_title">อัปเดตอัตโนมัติ</string>
+    <string name="notif_auto_update_message">กำลังติดตั้ง %d แอปในพื้นหลัง</string>
 
     <!-- Menu -->
     <string name="menu_about">เกี่ยวกับแอป</string>

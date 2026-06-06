@@ -18,6 +18,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.launch
 import android.os.StatFs
 import okhttp3.OkHttpClient
@@ -71,6 +72,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val selfUpdateInstallTrigger = _selfUpdateInstallTrigger.asSharedFlow()
 
     private val progressJobs = mutableMapOf<String, Job>()
+    private val downloadSemaphore = Semaphore(MAX_CONCURRENT_DOWNLOADS)
     private var selfUpdateJob: Job? = null
     private val apiService = GitHubApiService(getApplication())
     private val gson = Gson()
@@ -88,6 +90,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         const val GITHUB_REPO = "bearapp"
         const val DOWNLOAD_CHANNEL_ID = "bear_store_downloads"
         private const val SELF_UPDATE_NOTIF_ID = 1002
+        private const val MAX_CONCURRENT_DOWNLOADS = 3
         private const val CACHE_FILE = "apps_cache.json"
         private const val CACHE_VERSION = 2
         private const val CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000L
@@ -195,6 +198,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         updateDownloadState(app.id, CardDownloadState.DOWNLOADING, 0)
         postDownloadNotification(app.name, notifId, 0, 0L)
         progressJobs[app.id] = viewModelScope.launch(Dispatchers.IO) {
+            downloadSemaphore.acquire()
             val call = downloadClient.newCall(Request.Builder().url(app.downloadUrl).build())
             try {
                 val response = call.execute()
@@ -243,6 +247,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 destFile.delete()
                 cancelDownloadNotification(notifId)
                 updateDownloadState(app.id, CardDownloadState.ERROR, 0, e.message ?: str(R.string.error_download_failed))
+            } finally {
+                downloadSemaphore.release()
             }
         }
     }
