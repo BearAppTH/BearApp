@@ -1,6 +1,13 @@
 {
   "apps": [
     {
+      "id": "bear_microg",
+      "name": "Bear MicroG",
+      "package_name": "app.bear.android.gms",
+      "github_owner": "BearAppTH",
+      "github_repo": "MicroG-RE"
+    },
+    {
       "id": "youtube",
       "name": "YouTube",
       "package_name": "app.bear.tube",
@@ -15,13 +22,6 @@
       "github_owner": "BearAppTH",
       "github_repo": "app",
       "github_file_prefix": "YouTube.Music"
-    },
-    {
-      "id": "bear_microg",
-      "name": "Bear MicroG",
-      "package_name": "app.bear.android.gms",
-      "github_owner": "BearAppTH",
-      "github_repo": "MicroG-RE"
     }
   ]
 }
