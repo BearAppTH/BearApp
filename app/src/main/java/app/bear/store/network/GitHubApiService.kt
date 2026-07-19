@@ -17,9 +17,10 @@ class GitHubApiService(private val context: Context) {
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
         .build()
+    private val proxyBase = "https://bearapp-github-proxy.boss-borwornwong.workers.dev"
 
     fun getAppsConfig(owner: String, repo: String, branch: String = "main"): AppsConfig {
-        val url = "https://raw.githubusercontent.com/$owner/$repo/$branch/apps_config.json"
+        val url = "$proxyBase/raw/$owner/$repo/$branch/apps_config.json"
         val response = client.newCall(
             Request.Builder().url(url)
                 .header("Cache-Control", "no-cache")
@@ -37,8 +38,7 @@ class GitHubApiService(private val context: Context) {
     fun fetchRelease(owner: String, repo: String): JsonObject {
         val response = client.newCall(
             Request.Builder()
-                .url("https://api.github.com/repos/$owner/$repo/releases/latest")
-                .header("Accept", "application/vnd.github.v3+json")
+                .url("$proxyBase/repos/$owner/$repo/releases/latest")
                 .header("Cache-Control", "no-cache")
                 .header("User-Agent", "BearApp-Installer/1.0")
                 .build()
