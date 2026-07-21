@@ -80,6 +80,7 @@
     <string name="error_download_failed">Cannot download</string>
     <string name="error_insufficient_space">Insufficient storage space</string>
     <string name="error_rate_limit">GitHub API rate limit — please try again later</string>
+    <string name="error_checksum_mismatch">Downloaded file doesn\'t match the original — install blocked for safety</string>
 
     <!-- App detail dialog -->
     <string name="label_description">Description</string>
@@ -101,6 +102,7 @@
     <string name="notif_channel_download_name">Downloads</string>
     <string name="notif_channel_download_desc">Shows app download progress</string>
     <string name="notif_downloading">Downloading… %d%%</string>
+    <string name="notif_tap_to_install">Download complete — tap to install</string>
     <string name="notif_updates_title">Updates available</string>
     <string name="notif_updates_message">%d app(s) have updates</string>
     <string name="notif_updates_named">%s has updates available</string>
