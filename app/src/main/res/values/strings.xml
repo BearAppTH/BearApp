@@ -80,6 +80,7 @@
     <string name="error_download_failed">ดาวน์โหลดไม่ได้</string>
     <string name="error_insufficient_space">พื้นที่เก็บข้อมูลไม่เพียงพอ</string>
     <string name="error_rate_limit">GitHub API rate limit — ลองใหม่ภายหลัง</string>
+    <string name="error_checksum_mismatch">ไฟล์ที่ดาวน์โหลดไม่ตรงกับต้นฉบับ — ยกเลิกการติดตั้งเพื่อความปลอดภัย</string>
 
     <!-- App detail dialog -->
     <string name="label_description">รายละเอียด</string>
@@ -101,6 +102,7 @@
     <string name="notif_channel_download_name">การดาวน์โหลด</string>
     <string name="notif_channel_download_desc">แสดงความคืบหน้าการดาวน์โหลดแอป</string>
     <string name="notif_downloading">กำลังดาวน์โหลด… %d%%</string>
+    <string name="notif_tap_to_install">ดาวน์โหลดเสร็จแล้ว — แตะเพื่อติดตั้ง</string>
     <string name="notif_updates_title">มีอัปเดตใหม่</string>
     <string name="notif_updates_message">%d แอปมีอัปเดตใหม่</string>
     <string name="notif_updates_named">%s มีอัปเดตใหม่</string>
