@@ -24,7 +24,8 @@ data class DownloadInfo(
     val progress: Int = 0,
     val error: String? = null,
     val downloadedBytes: Long = 0L,
-    val totalBytes: Long = 0L
+    val totalBytes: Long = 0L,
+    val bytesPerSecond: Long = 0L
 )
 enum class ChipFilter { ALL, UPDATES, INSTALLED }
 
@@ -36,7 +37,8 @@ data class AppCardState(
     val installedVersion: String? = null,
     val downloadError: String? = null,
     val downloadedBytes: Long = 0L,
-    val totalBytes: Long = 0L
+    val totalBytes: Long = 0L,
+    val bytesPerSecond: Long = 0L
 )
 
 class AppCardAdapter(
@@ -63,12 +65,12 @@ class AppCardAdapter(
         applyFilter()
     }
 
-    fun updateState(appId: String, state: CardDownloadState, progress: Int = 0, error: String? = null, downloadedBytes: Long = 0L, totalBytes: Long = 0L) {
+    fun updateState(appId: String, state: CardDownloadState, progress: Int = 0, error: String? = null, downloadedBytes: Long = 0L, totalBytes: Long = 0L, bytesPerSecond: Long = 0L) {
         val allIdx = allItems.indexOfFirst { it.app.id == appId }
-        if (allIdx >= 0) allItems[allIdx] = allItems[allIdx].copy(downloadState = state, progress = progress, downloadError = error, downloadedBytes = downloadedBytes, totalBytes = totalBytes)
+        if (allIdx >= 0) allItems[allIdx] = allItems[allIdx].copy(downloadState = state, progress = progress, downloadError = error, downloadedBytes = downloadedBytes, totalBytes = totalBytes, bytesPerSecond = bytesPerSecond)
         val idx = items.indexOfFirst { it.app.id == appId }
         if (idx < 0) return
-        items[idx] = items[idx].copy(downloadState = state, progress = progress, downloadError = error, downloadedBytes = downloadedBytes, totalBytes = totalBytes)
+        items[idx] = items[idx].copy(downloadState = state, progress = progress, downloadError = error, downloadedBytes = downloadedBytes, totalBytes = totalBytes, bytesPerSecond = bytesPerSecond)
         notifyItemChanged(idx)
     }
 
@@ -256,10 +258,17 @@ class AppCardAdapter(
                     tvDownloadError.visibility = View.GONE
                     progressLayout.visibility = View.VISIBLE
                     progressBar.progress = cardState.progress
-                    tvProgress.text = if (cardState.totalBytes > 0L) {
+                    val baseText = if (cardState.totalBytes > 0L) {
                         "${cardState.progress}% (${formatFileSize(cardState.downloadedBytes)} / ${formatFileSize(cardState.totalBytes)})"
                     } else {
                         "${cardState.progress}%"
+                    }
+                    tvProgress.text = if (cardState.bytesPerSecond > 0L) {
+                        val speedText = "${formatFileSize(cardState.bytesPerSecond)}/s"
+                        val etaText = etaLabel(cardState.totalBytes, cardState.downloadedBytes, cardState.bytesPerSecond)
+                        if (etaText != null) "$baseText • $speedText • $etaText" else "$baseText • $speedText"
+                    } else {
+                        baseText
                     }
                     btnCancel.setOnClickListener { onCancel(app) }
                     btnInstall.visibility = View.GONE
@@ -313,6 +322,18 @@ class AppCardAdapter(
         bytes <= 0L -> ""
         bytes < 1024 * 1024 -> "${bytes / 1024} KB"
         else -> "${"%.1f".format(bytes / (1024f * 1024f))} MB"
+    }
+
+    private fun etaLabel(totalBytes: Long, downloadedBytes: Long, bytesPerSecond: Long): String? {
+        if (totalBytes <= 0L || bytesPerSecond <= 0L) return null
+        val remainingBytes = totalBytes - downloadedBytes
+        if (remainingBytes <= 0L) return null
+        val etaSeconds = remainingBytes / bytesPerSecond
+        return when {
+            etaSeconds < 60 -> "ETA ${etaSeconds}s"
+            etaSeconds < 3600 -> "ETA ${etaSeconds / 60}m ${etaSeconds % 60}s"
+            else -> "ETA ${etaSeconds / 3600}h ${(etaSeconds % 3600) / 60}m"
+        }
     }
 
     private fun iconResFor(id: String) = when (id) {
