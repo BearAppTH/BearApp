@@ -61,7 +61,8 @@ class GitHubApiService(private val context: Context) {
             body = obj.get("body")?.asString ?: "",
             publishedAt = obj.get("published_at")?.asString ?: "",
             apkUrl = apkAsset?.get("browser_download_url")?.asString,
-            apkSize = apkAsset?.get("size")?.asLong ?: 0L
+            apkSize = apkAsset?.get("size")?.asLong ?: 0L,
+            apkDigest = apkAsset?.get("digest")?.asString
         )
     }
 
@@ -77,6 +78,7 @@ class GitHubApiService(private val context: Context) {
         val assetName = asset.get("name")?.asString ?: return null
         val downloadUrl = asset.get("browser_download_url")?.asString ?: return null
         val size = asset.get("size")?.asLong ?: 0L
+        val digest = asset.get("digest")?.asString
         val version = assetName.removePrefix(prefix).removeSuffix(".apk").replace("_", ".")
         return AppRelease(
             tagName = version,
@@ -84,7 +86,8 @@ class GitHubApiService(private val context: Context) {
             body = obj.get("body")?.asString ?: "",
             publishedAt = obj.get("published_at")?.asString ?: "",
             apkUrl = downloadUrl,
-            apkSize = size
+            apkSize = size,
+            apkDigest = digest
         )
     }
 
