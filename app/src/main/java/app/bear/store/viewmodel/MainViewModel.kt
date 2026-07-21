@@ -7,6 +7,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.bear.store.util.VersionUtils
+import app.bear.store.util.ChecksumUtils
 import android.app.NotificationManager
 import android.content.Context
 import app.bear.store.PrefsManager
@@ -146,7 +147,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     downloadUrl = release.apkUrl ?: app.downloadUrl,
                     updatedAt = toThaiDate(release.publishedAt).ifBlank { app.updatedAt },
                     changelog = release.body.ifBlank { app.changelog },
-                    downloadSize = release.apkSize
+                    downloadSize = release.apkSize,
+                    sha256Digest = release.apkDigest
                 )
             } catch (_: Exception) { app }
         }
@@ -208,6 +210,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val total = body.contentLength()
                 var downloaded = 0L
                 var lastPct = -1
+                var lastSampleTime = System.currentTimeMillis()
+                var lastSampleBytes = 0L
+                var currentSpeed = 0L
                 destFile.parentFile?.mkdirs()
                 if (total > 0) {
                     val statsPath = destFile.parentFile?.path
@@ -223,10 +228,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         while (isActive && inp.read(buf).also { n = it } >= 0) {
                             out.write(buf, 0, n)
                             downloaded += n
+                            val now = System.currentTimeMillis()
+                            val elapsed = now - lastSampleTime
+                            if (elapsed >= 500) {
+                                currentSpeed = ((downloaded - lastSampleBytes) * 1000) / elapsed
+                                lastSampleTime = now
+                                lastSampleBytes = downloaded
+                            }
                             if (total > 0) {
                                 val pct = ((downloaded * 100) / total).toInt()
                                 if (pct != lastPct) {
-                                    updateDownloadState(app.id, CardDownloadState.DOWNLOADING, pct, downloadedBytes = downloaded, totalBytes = total)
+                                    updateDownloadState(app.id, CardDownloadState.DOWNLOADING, pct, downloadedBytes = downloaded, totalBytes = total, bytesPerSecond = currentSpeed)
                                     postDownloadNotification(app.name, notifId, pct, total)
                                     lastPct = pct
                                 }
@@ -235,8 +247,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
                 if (isActive) {
-                    cancelDownloadNotification(notifId)
+                    if (!ChecksumUtils.verify(destFile, app.sha256Digest)) {
+                        destFile.delete()
+                        cancelDownloadNotification(notifId)
+                        updateDownloadState(app.id, CardDownloadState.ERROR, 0, str(R.string.error_checksum_mismatch))
+                        return@launch
+                    }
                     updateDownloadState(app.id, CardDownloadState.COMPLETE, 100)
+                    postInstallReadyNotification(app.name, notifId, destFile)
                     _autoInstallTrigger.emit(app)
                 } else {
                     destFile.delete()
@@ -270,7 +288,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val currentVersion = BuildConfig.VERSION_NAME
                 if (VersionUtils.isVersionNewer(latestVersion, currentVersion) && release.apkUrl != null) {
                     _selfUpdateState.postValue(
-                        SelfUpdateState.UpdateAvailable(release.tagName, release.apkUrl, release.body)
+                        SelfUpdateState.UpdateAvailable(release.tagName, release.apkUrl, release.body, release.apkDigest)
                     )
                 } else {
                     _selfUpdateState.postValue(SelfUpdateState.UpToDate)
@@ -290,7 +308,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _selfUpdateState.value = SelfUpdateState.Error(str(R.string.error_download_cancelled))
     }
 
-    fun startSelfUpdate(downloadUrl: String, destFile: File) {
+    fun startSelfUpdate(downloadUrl: String, destFile: File, expectedDigest: String? = null) {
         _selfUpdateState.value = SelfUpdateState.Downloading(0)
         val appName = str(R.string.app_display_name)
         postDownloadNotification(appName, SELF_UPDATE_NOTIF_ID, 0, 0L)
@@ -330,6 +348,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
                 if (isActive) {
+                    if (!ChecksumUtils.verify(destFile, expectedDigest)) {
+                        destFile.delete()
+                        cancelDownloadNotification(SELF_UPDATE_NOTIF_ID)
+                        _selfUpdateState.postValue(SelfUpdateState.Error(str(R.string.error_checksum_mismatch)))
+                        return@launch
+                    }
                     cancelDownloadNotification(SELF_UPDATE_NOTIF_ID)
                     _selfUpdateState.postValue(SelfUpdateState.ReadyToInstall)
                     _selfUpdateInstallTrigger.emit(destFile)
@@ -350,6 +374,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun getApp(appId: String): AppItem? = _apps.value?.find { it.id == appId }
+
+    fun dismissDownloadNotification(appId: String) = cancelDownloadNotification(appId.hashCode())
 
     fun installApkViaPM(appId: String, apkFile: File) {
         if (!apkFile.exists()) return
@@ -418,6 +444,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         notificationManager.notify(notifId, notification)
     }
 
+    private fun postInstallReadyNotification(title: String, notifId: Int, apkFile: File) {
+        val app = getApplication<Application>()
+        val installIntent = try {
+            val uri = androidx.core.content.FileProvider.getUriForFile(app, "${app.packageName}.provider", apkFile)
+            Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+        } catch (_: Exception) {
+            null
+        }
+        val pendingIntent = installIntent?.let {
+            PendingIntent.getActivity(
+                app, notifId, it,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
+        val notification = NotificationCompat.Builder(app, DOWNLOAD_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_bear_logo)
+            .setContentTitle(title)
+            .setContentText(app.getString(R.string.notif_tap_to_install))
+            .setAutoCancel(true)
+            .setOngoing(false)
+            .apply { if (pendingIntent != null) setContentIntent(pendingIntent) }
+            .build()
+        notificationManager.notify(notifId, notification)
+    }
+
     private fun cancelDownloadNotification(notifId: Int) {
         notificationManager.cancel(notifId)
     }
@@ -444,9 +498,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } catch (_: Exception) { null }
     }
 
-    private fun updateDownloadState(appId: String, state: CardDownloadState, progress: Int, error: String? = null, downloadedBytes: Long = 0L, totalBytes: Long = 0L) {
+    private fun updateDownloadState(appId: String, state: CardDownloadState, progress: Int, error: String? = null, downloadedBytes: Long = 0L, totalBytes: Long = 0L, bytesPerSecond: Long = 0L) {
         val current = _downloadStates.value.orEmpty().toMutableMap()
-        current[appId] = DownloadInfo(state, progress, error, downloadedBytes, totalBytes)
+        current[appId] = DownloadInfo(state, progress, error, downloadedBytes, totalBytes, bytesPerSecond)
         _downloadStates.postValue(current)
     }
 
