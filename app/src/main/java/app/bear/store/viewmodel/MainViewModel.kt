@@ -13,7 +13,6 @@ import android.content.Context
 import app.bear.store.PrefsManager
 import androidx.core.app.NotificationCompat
 import com.google.gson.Gson
-import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -36,6 +35,7 @@ import android.content.pm.PackageInstaller
 import android.os.Build
 import app.bear.store.InstallResultReceiver
 import app.bear.store.model.SelfUpdateState
+import app.bear.store.network.AppsRepository
 import app.bear.store.network.GitHubApiService
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -76,6 +76,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val downloadSemaphore = Semaphore(MAX_CONCURRENT_DOWNLOADS)
     private var selfUpdateJob: Job? = null
     private val apiService = GitHubApiService(getApplication())
+    private val appsRepository = AppsRepository(apiService)
     private val gson = Gson()
 
     private val downloadClient = OkHttpClient.Builder()
@@ -128,29 +129,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun resolveGitHubApps(apps: List<AppItem>): List<AppItem> {
-        // Cache release JSON per "owner/repo" to avoid hitting the same endpoint multiple times
-        val jsonCache = mutableMapOf<String, JsonObject>()
-        return apps.map { app ->
-            if (!app.isGitHubManaged) return@map app
-            try {
-                val key = "${app.githubOwner}/${app.githubRepo}"
-                val releaseJson = jsonCache.getOrPut(key) {
-                    apiService.fetchRelease(app.githubOwner, app.githubRepo)
-                }
-                val release = if (app.githubFilePrefix.isNotBlank()) {
-                    apiService.parseAssetFromRelease(releaseJson, app.githubFilePrefix) ?: return@map app
-                } else {
-                    apiService.parseRelease(releaseJson)
-                }
-                app.copy(
-                    version = release.tagName.trimStart('v', 'V'),
-                    downloadUrl = release.apkUrl ?: app.downloadUrl,
-                    updatedAt = toThaiDate(release.publishedAt).ifBlank { app.updatedAt },
-                    changelog = release.body.ifBlank { app.changelog },
-                    downloadSize = release.apkSize,
-                    sha256Digest = release.apkDigest
-                )
-            } catch (_: Exception) { app }
+        return appsRepository.resolve(apps).map { (app, release) ->
+            if (release != null) {
+                app.copy(updatedAt = toThaiDate(release.publishedAt).ifBlank { app.updatedAt })
+            } else {
+                app
+            }
         }
     }
 
