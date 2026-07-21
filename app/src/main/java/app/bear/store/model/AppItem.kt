@@ -15,7 +15,10 @@ data class AppItem(
     val githubOwner: String = "",
     val githubRepo: String = "",
     val githubFilePrefix: String = "",
-    val downloadSize: Long = 0L
+    val downloadSize: Long = 0L,
+    // Expected "sha256:<hex>" digest for downloadUrl, when known (from GitHub
+    // release asset metadata). Used to verify integrity after download.
+    val sha256Digest: String? = null
 ) {
     val hasDownloadUrl: Boolean get() = downloadUrl.isNotBlank()
     val isGitHubManaged: Boolean get() = githubOwner.isNotBlank() && githubRepo.isNotBlank()
