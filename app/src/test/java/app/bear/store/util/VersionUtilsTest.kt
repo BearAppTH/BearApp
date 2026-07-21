@@ -57,4 +57,19 @@ class VersionUtilsTest {
         // "v1" -> digits-only "1"; validates tolerance for stray prefix characters
         assertTrue(VersionUtils.isVersionNewer("v2.0", "v1.9"))
     }
+
+    @Test
+    fun `full release outranks pre-release with same numeric core`() {
+        assertTrue(VersionUtils.isVersionNewer("1.3.0", "1.3.0-beta"))
+    }
+
+    @Test
+    fun `pre-release is not newer than the full release it precedes`() {
+        assertFalse(VersionUtils.isVersionNewer("1.3.0-beta", "1.3.0"))
+    }
+
+    @Test
+    fun `two pre-releases with same numeric core are not newer`() {
+        assertFalse(VersionUtils.isVersionNewer("1.3.0-beta", "1.3.0-rc"))
+    }
 }
