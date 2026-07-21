@@ -15,10 +15,10 @@ import app.bear.store.InstallResultReceiver
 import app.bear.store.MainActivity
 import app.bear.store.PrefsManager
 import app.bear.store.R
+import app.bear.store.network.AppsRepository
 import app.bear.store.network.GitHubApiService
 import app.bear.store.util.VersionUtils
 import app.bear.store.util.ChecksumUtils
-import com.google.gson.JsonObject
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -30,26 +30,7 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineW
         return try {
             val apiService = GitHubApiService(applicationContext)
             val config = apiService.getAppsConfig(GITHUB_OWNER, GITHUB_REPO)
-            val jsonCache = mutableMapOf<String, JsonObject>()
-            val apps = config.apps.map { app ->
-                if (!app.isGitHubManaged) return@map app
-                try {
-                    val key = "${app.githubOwner}/${app.githubRepo}"
-                    val releaseJson = jsonCache.getOrPut(key) {
-                        apiService.fetchRelease(app.githubOwner, app.githubRepo)
-                    }
-                    val release = if (app.githubFilePrefix.isNotBlank()) {
-                        apiService.parseAssetFromRelease(releaseJson, app.githubFilePrefix) ?: return@map app
-                    } else {
-                        apiService.parseRelease(releaseJson)
-                    }
-                    app.copy(
-                        version = release.tagName.trimStart('v', 'V'),
-                        downloadUrl = release.apkUrl ?: app.downloadUrl,
-                        sha256Digest = release.apkDigest
-                    )
-                } catch (_: Exception) { app }
-            }
+            val apps = AppsRepository(apiService).resolve(config.apps).map { it.app }
             val pm = applicationContext.packageManager
             val updates = apps.filter { app ->
                 if (app.packageName.isBlank() || app.version.isBlank()) return@filter false
