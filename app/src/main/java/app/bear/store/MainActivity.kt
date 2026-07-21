@@ -227,7 +227,7 @@ class MainActivity : AppCompatActivity() {
 
         viewModel.downloadStates.observe(this) { states ->
             states.forEach { (appId, info) ->
-                adapter.updateState(appId, info.state, info.progress, info.error, info.downloadedBytes, info.totalBytes)
+                adapter.updateState(appId, info.state, info.progress, info.error, info.downloadedBytes, info.totalBytes, info.bytesPerSecond)
             }
             updateUpdateAllButton()
         }
@@ -240,6 +240,7 @@ class MainActivity : AppCompatActivity() {
                     downloadedFiles.remove(appId)?.delete()
                     pendingApkCleanup.remove(appId)
                     viewModel.clearDownloadState(appId)
+                    viewModel.dismissDownloadNotification(appId)
                 }
             }
             updateUpdateAllButton()
@@ -270,6 +271,7 @@ class MainActivity : AppCompatActivity() {
                     downloadedFiles.remove(appId)?.delete()
                     pendingApkCleanup.remove(appId)
                     viewModel.clearDownloadState(appId)
+                    viewModel.dismissDownloadNotification(appId)
                     viewModel.refreshInstallStates()
                 }
                 // on failure, COMPLETE state persists → Install button stays for manual install
@@ -405,7 +407,7 @@ class MainActivity : AppCompatActivity() {
             b = dialogBinding,
             state = state,
             onCancelClick = { viewModel.cancelSelfUpdate(); dialog.dismiss() },
-            onUpdateClick = { _, downloadUrl -> startSelfUpdate(downloadUrl) }
+            onUpdateClick = { _, downloadUrl, digest -> startSelfUpdate(downloadUrl, digest) }
         )
 
         val updateObserver = Observer<SelfUpdateState> { state ->
@@ -423,7 +425,7 @@ class MainActivity : AppCompatActivity() {
         b: DialogAboutBinding,
         state: SelfUpdateState,
         onCancelClick: () -> Unit,
-        onUpdateClick: (tagName: String, downloadUrl: String) -> Unit
+        onUpdateClick: (tagName: String, downloadUrl: String, digest: String?) -> Unit
     ) {
         when (state) {
             is SelfUpdateState.Checking -> {
@@ -455,7 +457,7 @@ class MainActivity : AppCompatActivity() {
                 b.btnSelfUpdate.text = getString(R.string.btn_update_now)
                 b.btnSelfUpdate.isEnabled = true
                 b.btnSelfUpdate.setOnClickListener {
-                    onUpdateClick(state.tagName, state.downloadUrl)
+                    onUpdateClick(state.tagName, state.downloadUrl, state.digest)
                 }
             }
             is SelfUpdateState.Downloading -> {
@@ -496,9 +498,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun startSelfUpdate(downloadUrl: String) {
+    private fun startSelfUpdate(downloadUrl: String, digest: String?) {
         val destFile = File(getExternalFilesDir(null), "bear-store-update.apk")
-        viewModel.startSelfUpdate(downloadUrl, destFile)
+        viewModel.startSelfUpdate(downloadUrl, destFile, digest)
         Toast.makeText(this, R.string.toast_self_update_start, Toast.LENGTH_SHORT).show()
     }
 
