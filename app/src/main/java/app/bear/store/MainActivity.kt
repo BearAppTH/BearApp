@@ -157,7 +157,7 @@ class MainActivity : AppCompatActivity() {
         outState.putString(KEY_SEARCH_QUERY, binding.etSearch.text?.toString() ?: "")
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         processIntent(intent)
