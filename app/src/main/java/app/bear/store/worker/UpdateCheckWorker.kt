@@ -17,6 +17,7 @@ import app.bear.store.PrefsManager
 import app.bear.store.R
 import app.bear.store.network.GitHubApiService
 import app.bear.store.util.VersionUtils
+import app.bear.store.util.ChecksumUtils
 import com.google.gson.JsonObject
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -44,7 +45,8 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineW
                     }
                     app.copy(
                         version = release.tagName.trimStart('v', 'V'),
-                        downloadUrl = release.apkUrl ?: app.downloadUrl
+                        downloadUrl = release.apkUrl ?: app.downloadUrl,
+                        sha256Digest = release.apkDigest
                     )
                 } catch (_: Exception) { app }
             }
@@ -86,6 +88,10 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineW
                 if (!response.isSuccessful) { needsManualInstall.add(app.name); continue }
                 response.body?.use { body ->
                     destFile.outputStream().use { body.byteStream().copyTo(it) }
+                }
+                if (!ChecksumUtils.verify(destFile, app.sha256Digest)) {
+                    needsManualInstall.add(app.name)
+                    continue
                 }
                 val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
                 params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
